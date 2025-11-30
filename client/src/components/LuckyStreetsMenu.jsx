@@ -318,7 +318,7 @@ export default function LuckyStreetsMenu() {
               </div>
 
               <motion.button
-                onClick={() => playerName && roomCode.length === 4 && joinRoom(roomCode, playerName, 0)}
+                onClick={() => playerName && roomCode.length === 4 && joinRoom(roomCode, playerName)}
                 className={`w-full py-4 rounded-xl font-bold text-xl transition-all ${
                   playerName && roomCode.length === 4 
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg hover:shadow-blue-500/30' 

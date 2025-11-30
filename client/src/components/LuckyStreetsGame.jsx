@@ -423,10 +423,56 @@ export default function LuckyStreetsGame() {
         </div>
       </div>
 
-      {/* Action Modals would go here */}
       {/* Buy Property Modal */}
-      {/* Lucky Drop Modal */}
-      {/* etc */}
+      <AnimatePresence>
+        {pendingBuy && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="glass p-8 rounded-2xl max-w-md w-full text-center"
+            >
+              <h2 className="text-2xl font-bold mb-4">🏠 Buy Property?</h2>
+              <div 
+                className="w-16 h-16 mx-auto rounded-lg mb-4"
+                style={{ backgroundColor: pendingBuy.property?.color || '#666' }}
+              />
+              <p className="text-xl mb-2">{pendingBuy.property?.name}</p>
+              <p className="text-3xl font-bold text-green-400 mb-6">${pendingBuy.price}</p>
+              
+              <div className="flex gap-4 justify-center">
+                <motion.button
+                  onClick={buyProperty}
+                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-bold text-lg"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={myPlayer?.money < pendingBuy.price}
+                >
+                  ✓ BUY
+                </motion.button>
+                <motion.button
+                  onClick={skipBuy}
+                  className="px-8 py-3 bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl font-bold text-lg"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  ✗ SKIP
+                </motion.button>
+              </div>
+              
+              {myPlayer?.money < pendingBuy.price && (
+                <p className="text-red-400 mt-4">Not enough money!</p>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

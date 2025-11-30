@@ -73,6 +73,17 @@ export const useLuckyStreetsStore = create((set, get) => ({
       set({ roomCode, gameState, phase: 'lobby', playerId: player.id });
     });
     
+    socket.on('roomJoined', ({ roomCode, player, gameState }) => {
+      // Deduct buy-in from account balance
+      const buyIn = gameState.buyIn || 0;
+      const currentBalance = get().accountBalance;
+      if (buyIn > 0 && currentBalance >= buyIn) {
+        localStorage.setItem('accountBalance', (currentBalance - buyIn).toString());
+        set({ accountBalance: currentBalance - buyIn });
+      }
+      set({ roomCode, gameState, phase: 'lobby', playerId: player.id });
+    });
+    
     socket.on('playerJoined', ({ player, gameState }) => {
       set({ gameState });
     });
@@ -217,10 +228,9 @@ export const useLuckyStreetsStore = create((set, get) => ({
     }
   },
   
-  joinRoom: (roomCode, playerName, buyIn) => {
-    const { socket, accountBalance, setAccountBalance } = get();
-    if (socket && accountBalance >= buyIn) {
-      setAccountBalance(accountBalance - buyIn);
+  joinRoom: (roomCode, playerName) => {
+    const { socket } = get();
+    if (socket) {
       set({ playerName, roomCode });
       socket.emit('joinRoom', { roomCode, playerName });
     }
