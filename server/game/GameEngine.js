@@ -104,8 +104,6 @@ class GameEngine {
       money: startingMoney,
       position: 0,
       properties: [],
-      powerTokens: 2,
-      powerTokensUsed: [],
       inJail: false,
       jailTurns: 0,
       bankrupt: false,
@@ -133,7 +131,7 @@ class GameEngine {
 
   startGame() {
     this.hasStarted = true;
-    this.phase = 'draft';
+    this.phase = 'playing';
     this.startTime = Date.now();
     
     // Calculate total pot
@@ -293,78 +291,78 @@ class GameEngine {
     return { dice: [die1, die2], newPosition: player.position, passedGo };
   }
 
-  usePowerToken(playerId, tokenType, targetData) {
+  // Draw a Chance card and apply effect
+  drawChance(playerId) {
     const player = this.players.find(p => p.id === playerId);
-    
-    if (!player) {
-      return { error: 'Player not found' };
+    if (!player) return { error: 'Player not found' };
+
+    const cards = [
+      { type: 'money', amount: Math.round(50 * this.priceMultiplier), text: 'Bank pays you dividend!' },
+      { type: 'money', amount: Math.round(100 * this.priceMultiplier), text: 'You won a crossword competition!' },
+      { type: 'money', amount: Math.round(-50 * this.priceMultiplier), text: 'Speeding fine.' },
+      { type: 'money', amount: Math.round(-15 * this.priceMultiplier), text: 'Parking ticket.' },
+      { type: 'move', position: 0, text: 'Advance to GO!' },
+      { type: 'move', position: 10, text: 'Go directly to Jail!' },
+      { type: 'money', amount: Math.round(150 * this.priceMultiplier), text: 'Your building loan matures!' },
+      { type: 'money', amount: Math.round(-100 * this.priceMultiplier), text: 'Pay poor tax.' },
+    ];
+
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    let result = { card };
+
+    if (card.type === 'money') {
+      player.money += card.amount;
+      if (player.money < 0) player.money = 0;
+    } else if (card.type === 'move') {
+      const oldPos = player.position;
+      player.position = card.position;
+      if (card.position === 10) {
+        player.inJail = true;
+        player.jailTurns = 0;
+      } else if (card.position === 0 && oldPos > 0) {
+        // Passed GO
+        player.money += this.goIncome || Math.round(200 * this.priceMultiplier);
+      }
     }
-    
-    if (player.powerTokens <= 0) {
-      return { error: 'No power tokens left' };
+
+    this.updateNetWorth(player);
+    return result;
+  }
+
+  // Draw a Community Chest card and apply effect
+  drawCommunityChest(playerId) {
+    const player = this.players.find(p => p.id === playerId);
+    if (!player) return { error: 'Player not found' };
+
+    const cards = [
+      { type: 'money', amount: Math.round(200 * this.priceMultiplier), text: 'Bank error in your favor!' },
+      { type: 'money', amount: Math.round(100 * this.priceMultiplier), text: 'Life insurance matures!' },
+      { type: 'money', amount: Math.round(50 * this.priceMultiplier), text: 'From sale of stock!' },
+      { type: 'money', amount: Math.round(25 * this.priceMultiplier), text: 'Income tax refund!' },
+      { type: 'money', amount: Math.round(-50 * this.priceMultiplier), text: 'Doctor\'s fees.' },
+      { type: 'money', amount: Math.round(-100 * this.priceMultiplier), text: 'Hospital fees.' },
+      { type: 'move', position: 0, text: 'Advance to GO!' },
+      { type: 'move', position: 10, text: 'Go to Jail!' },
+    ];
+
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    let result = { card };
+
+    if (card.type === 'money') {
+      player.money += card.amount;
+      if (player.money < 0) player.money = 0;
+    } else if (card.type === 'move') {
+      const oldPos = player.position;
+      player.position = card.position;
+      if (card.position === 10) {
+        player.inJail = true;
+        player.jailTurns = 0;
+      } else if (card.position === 0 && oldPos > 0) {
+        player.money += this.goIncome || Math.round(200 * this.priceMultiplier);
+      }
     }
-    
-    let result = {};
-    
-    switch (tokenType) {
-      case 'reroll':
-        // Re-roll one die (must be used before movement is finalized)
-        const newDie = Math.floor(Math.random() * 6) + 1;
-        result = { newDie, type: 'reroll' };
-        break;
-        
-      case 'move-adjust':
-        // Move +2 or -2 after rolling
-        const adjustment = targetData.adjustment; // +2 or -2
-        if (Math.abs(adjustment) > 2) {
-          return { error: 'Can only adjust by 2' };
-        }
-        const newPos = (player.position + adjustment + 40) % 40;
-        player.position = newPos;
-        result = { newPosition: newPos, type: 'move-adjust' };
-        break;
-        
-      case 'block-property':
-        // Block a property for 1 turn
-        const propIndex = targetData.propertyIndex;
-        if (this.board[propIndex].type !== 'property') {
-          return { error: 'Not a property' };
-        }
-        this.board[propIndex].blocked = true;
-        this.board[propIndex].blockedUntilTurn = this.turnNumber + this.players.length;
-        result = { propertyIndex: propIndex, type: 'block-property' };
-        break;
-        
-      case 'force-auction':
-        // Force another player to auction one of their properties
-        const targetPlayerId = targetData.targetPlayerId;
-        const targetPropIndex = targetData.propertyIndex;
-        const targetPlayer = this.players.find(p => p.id === targetPlayerId);
-        
-        if (!targetPlayer) {
-          return { error: 'Target player not found' };
-        }
-        
-        if (!targetPlayer.properties.includes(targetPropIndex)) {
-          return { error: 'Target player does not own this property' };
-        }
-        
-        // Remove from target player
-        this.board[targetPropIndex].owner = null;
-        targetPlayer.properties = targetPlayer.properties.filter(p => p !== targetPropIndex);
-        
-        // Start auction
-        this.startAuction(targetPropIndex);
-        result = { propertyIndex: targetPropIndex, type: 'force-auction' };
-        break;
-        
-      default:
-        return { error: 'Unknown token type' };
-    }
-    
-    player.powerTokens--;
-    player.powerTokensUsed.push(tokenType);
-    
+
+    this.updateNetWorth(player);
     return result;
   }
 

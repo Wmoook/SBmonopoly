@@ -17,7 +17,7 @@ export const useGameStore = create((set, get) => ({
   
   // Game state
   gameState: null,
-  phase: 'menu', // menu, lobby, draft, playing, ended
+  phase: 'menu', // menu, lobby, playing, ended
   
   // Matchmaking state
   matchmakingStatus: null, // null, 'searching', 'found'
@@ -28,12 +28,11 @@ export const useGameStore = create((set, get) => ({
   // UI state
   error: null,
   messages: [],
-  draftProperties: [],
-  currentDrafter: null,
   lastDice: null,
   isRolling: false,
   pendingTradeProposal: null, // Incoming trade proposal
   pendingPropertyDecision: null, // Property to buy or auction
+  lastCard: null, // Last chance/community chest card drawn
   
   // Actions
   connect: () => {
@@ -99,19 +98,7 @@ export const useGameStore = create((set, get) => ({
     });
     
     socket.on('gameStarted', ({ gameState }) => {
-      set({ gameState, phase: 'draft' });
-    });
-    
-    socket.on('draftPhase', ({ draftProperties, currentDrafter, gameState }) => {
-      set({ draftProperties, currentDrafter, gameState });
-    });
-    
-    socket.on('propertyDrafted', ({ gameState }) => {
-      set({ gameState });
-    });
-    
-    socket.on('draftComplete', ({ gameState }) => {
-      set({ gameState, phase: 'playing', draftProperties: [], currentDrafter: null });
+      set({ gameState, phase: 'playing' });
     });
     
     socket.on('turnStart', ({ currentPlayer, gameState }) => {
@@ -154,8 +141,14 @@ export const useGameStore = create((set, get) => ({
       set({ gameState });
     });
     
-    socket.on('powerTokenUsed', ({ gameState }) => {
-      set({ gameState });
+    socket.on('cardDrawn', ({ playerId, cardType, card, gameState }) => {
+      // Show the card that was drawn
+      set({ 
+        gameState,
+        lastCard: { playerId, cardType, card }
+      });
+      // Clear after a few seconds
+      setTimeout(() => set({ lastCard: null }), 3000);
     });
     
     socket.on('awaitingAction', ({ gameState }) => {
@@ -261,13 +254,6 @@ export const useGameStore = create((set, get) => ({
     }
   },
   
-  draftProperty: (propertyIndex) => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('draftProperty', { propertyIndex });
-    }
-  },
-  
   rollDice: () => {
     const { socket } = get();
     if (socket) {
@@ -294,13 +280,6 @@ export const useGameStore = create((set, get) => ({
     const { socket } = get();
     if (socket) {
       socket.emit('buildHouse', { propertyIndex });
-    }
-  },
-  
-  usePowerToken: (tokenType, targetData = {}) => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('usePowerToken', { tokenType, targetData });
     }
   },
   

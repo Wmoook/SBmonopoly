@@ -10,7 +10,6 @@ import TradeModal from './TradeModal';
 import TradeProposalModal from './TradeProposalModal';
 import DiceRoller from './DiceRoller';
 import Chat from './Chat';
-import PowerTokens from './PowerTokens';
 
 export default function GameBoard() {
   const { 
@@ -18,6 +17,7 @@ export default function GameBoard() {
     playerId,
     pendingPropertyDecision,
     pendingTradeProposal,
+    lastCard,
     buyProperty,
     auctionProperty
   } = useGameStore();
@@ -51,8 +51,6 @@ export default function GameBoard() {
         
         {myPlayer && !myPlayer.bankrupt && (
           <div className="space-y-3">
-            <PowerTokens player={myPlayer} />
-            
             {/* Trade Button */}
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -60,7 +58,7 @@ export default function GameBoard() {
               onClick={() => setShowTrade(true)}
               className="w-full py-3 glass rounded-xl flex items-center justify-center gap-2 text-yellow-400 font-bold hover:bg-white/10 transition-all"
             >
-              🤝 Propose Trade
+              Propose Trade
             </motion.button>
           </div>
         )}
@@ -176,6 +174,39 @@ export default function GameBoard() {
             proposal={pendingTradeProposal}
             onClose={() => {}}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Card Drawn Notification */}
+      <AnimatePresence>
+        {lastCard && (
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none"
+          >
+            <div className={`glass p-8 rounded-2xl text-center max-w-md ${
+              lastCard.cardType === 'chance' ? 'border-2 border-orange-400' : 'border-2 border-blue-400'
+            }`}>
+              <div className="text-4xl mb-4">
+                {lastCard.cardType === 'chance' ? '🎲' : '📦'}
+              </div>
+              <h3 className={`text-xl font-bold mb-2 ${
+                lastCard.cardType === 'chance' ? 'text-orange-400' : 'text-blue-400'
+              }`}>
+                {lastCard.cardType === 'chance' ? 'CHANCE' : 'COMMUNITY CHEST'}
+              </h3>
+              <p className="text-lg">{lastCard.card.text}</p>
+              {lastCard.card.type === 'money' && (
+                <p className={`text-2xl font-bold mt-3 ${
+                  lastCard.card.amount >= 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {lastCard.card.amount >= 0 ? '+' : ''}${lastCard.card.amount.toFixed(2)}
+                </p>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -77,7 +77,7 @@ export default function PlayerPanel() {
                   {isMe && <span className="text-xs text-blue-400 bg-blue-400/20 px-1 rounded">YOU</span>}
                 </div>
                 <div className="text-xs text-gray-400">
-                  {player.properties.length} properties · {player.powerTokens}⚡ tokens
+                  {player.properties.length} properties
                 </div>
               </div>
               {player.bankrupt && (

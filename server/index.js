@@ -106,10 +106,9 @@ function startMatchmakingGame(buyIn, playerCount) {
       game.startGame();
       io.to(roomCode).emit('gameStarted', { gameState: game.getState() });
       
-      // Start property draft
-      io.to(roomCode).emit('draftPhase', { 
-        draftProperties: game.getDraftProperties(),
-        currentDrafter: game.getCurrentDrafter(),
+      // Skip draft, go directly to playing
+      io.to(roomCode).emit('turnStart', { 
+        currentPlayer: game.getCurrentPlayer(),
         gameState: game.getState()
       });
       
@@ -259,47 +258,11 @@ io.on('connection', (socket) => {
     game.startGame();
     io.to(roomCode).emit('gameStarted', { gameState: game.getState() });
     
-    // Start property draft
-    io.to(roomCode).emit('draftPhase', { 
-      draftProperties: game.getDraftProperties(),
-      currentDrafter: game.getCurrentDrafter(),
+    // Skip draft, go directly to playing
+    io.to(roomCode).emit('turnStart', { 
+      currentPlayer: game.getCurrentPlayer(),
       gameState: game.getState()
     });
-  });
-
-  // Draft a property
-  socket.on('draftProperty', ({ propertyIndex }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.draftProperty(socket.id, propertyIndex);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
-    }
-    
-    io.to(roomCode).emit('propertyDrafted', {
-      playerId: socket.id,
-      property: result.property,
-      gameState: game.getState()
-    });
-    
-    if (result.draftComplete) {
-      io.to(roomCode).emit('draftComplete', { gameState: game.getState() });
-      io.to(roomCode).emit('turnStart', { 
-        currentPlayer: game.getCurrentPlayer(),
-        gameState: game.getState()
-      });
-    } else {
-      io.to(roomCode).emit('draftPhase', {
-        draftProperties: game.getDraftProperties(),
-        currentDrafter: game.getCurrentDrafter(),
-        gameState: game.getState()
-      });
-    }
   });
 
   // Roll dice
@@ -328,28 +291,6 @@ io.on('connection', (socket) => {
     setTimeout(() => {
       handleLanding(roomCode, socket.id, game);
     }, 1500);
-  });
-
-  // Use power token
-  socket.on('usePowerToken', ({ tokenType, targetData }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.usePowerToken(socket.id, tokenType, targetData);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
-    }
-    
-    io.to(roomCode).emit('powerTokenUsed', {
-      playerId: socket.id,
-      tokenType,
-      result,
-      gameState: game.getState()
-    });
   });
 
   // Place auction bid
@@ -666,8 +607,40 @@ function handleLanding(roomCode, playerId, game) {
     game.sendToJail(playerId);
     io.to(roomCode).emit('sentToJail', { playerId, gameState: game.getState() });
     setTimeout(() => endTurn(roomCode, game), 1000);
+  } else if (space.type === 'chance') {
+    // Draw a Chance card
+    const result = game.drawChance(playerId);
+    io.to(roomCode).emit('cardDrawn', {
+      playerId,
+      cardType: 'chance',
+      card: result.card,
+      gameState: game.getState()
+    });
+    
+    // If moved to jail, handle that
+    if (result.card.type === 'move' && result.card.position === 10) {
+      io.to(roomCode).emit('sentToJail', { playerId, gameState: game.getState() });
+    }
+    
+    setTimeout(() => endTurn(roomCode, game), 2000);
+  } else if (space.type === 'chest') {
+    // Draw a Community Chest card
+    const result = game.drawCommunityChest(playerId);
+    io.to(roomCode).emit('cardDrawn', {
+      playerId,
+      cardType: 'chest',
+      card: result.card,
+      gameState: game.getState()
+    });
+    
+    // If moved to jail, handle that
+    if (result.card.type === 'move' && result.card.position === 10) {
+      io.to(roomCode).emit('sentToJail', { playerId, gameState: game.getState() });
+    }
+    
+    setTimeout(() => endTurn(roomCode, game), 2000);
   } else {
-    // Free parking, go, etc.
+    // Free parking, go, jail (visiting), etc.
     io.to(roomCode).emit('awaitingAction', {
       playerId,
       canBuild: game.canBuild(playerId),

@@ -187,9 +187,9 @@ export default function Lobby() {
       >
         <h3 className="font-bold mb-3">📋 Game Flow</h3>
         <ol className="text-sm text-gray-300 space-y-2">
-          <li>1️⃣ <strong>Draft Phase:</strong> Each player picks 2 starting properties</li>
-          <li>2️⃣ <strong>Play Phase:</strong> Roll dice, move, auction properties</li>
-          <li>3️⃣ <strong>Power Tokens:</strong> Use 2 special abilities strategically</li>
+          <li>1️⃣ <strong>Roll Dice:</strong> Move around the board</li>
+          <li>2️⃣ <strong>Buy or Auction:</strong> Land on properties to buy or auction</li>
+          <li>3️⃣ <strong>Collect Rent:</strong> Own properties to collect from others</li>
           <li>4️⃣ <strong>Win:</strong> Last player standing takes ${totalPot}!</li>
         </ol>
         {isAnonymous && (

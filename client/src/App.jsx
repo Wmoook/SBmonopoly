@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from './store/gameStore';
 import MainMenu from './components/MainMenu';
 import Lobby from './components/Lobby';
-import DraftPhase from './components/DraftPhase';
 import GameBoard from './components/GameBoard';
 import GameOver from './components/GameOver';
 
@@ -33,7 +32,6 @@ function App() {
       <div className="container mx-auto px-4 py-8">
         {phase === 'menu' && <MainMenu />}
         {phase === 'lobby' && <Lobby />}
-        {phase === 'draft' && <DraftPhase />}
         {phase === 'playing' && <GameBoard />}
         {phase === 'ended' && <GameOver />}
       </div>
