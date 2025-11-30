@@ -35,17 +35,30 @@ export const useLuckyStreetsStore = create((set, get) => ({
   
   // Actions
   connect: () => {
-    const socket = io(SOCKET_URL);
+    // Prevent multiple connections
+    const existingSocket = get().socket;
+    if (existingSocket?.connected) {
+      return;
+    }
+    
+    const socket = io(SOCKET_URL, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
     
     socket.on('connect', () => {
+      console.log('Connected to server:', socket.id);
       set({ socket, connected: true, playerId: socket.id });
     });
     
     socket.on('disconnect', () => {
+      console.log('Disconnected from server');
       set({ connected: false });
     });
     
     socket.on('error', ({ message }) => {
+      console.log('Server error:', message);
       set({ error: message });
       setTimeout(() => set({ error: null }), 3000);
     });

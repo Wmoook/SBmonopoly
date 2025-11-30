@@ -213,7 +213,8 @@ io.on('connection', (socket) => {
 
   // Join room
   socket.on('joinRoom', ({ roomCode, playerName }) => {
-    const game = games.get(roomCode);
+    const normalizedCode = roomCode.toUpperCase().trim();
+    const game = games.get(normalizedCode);
     
     if (!game) {
       socket.emit('error', { message: 'Room not found' });
@@ -230,11 +231,25 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const player = game.addPlayer(socket.id, playerName);
-    playerToGame.set(socket.id, roomCode);
+    // Check if player already in game (prevent duplicates)
+    const existingPlayer = game.players.find(p => p.id === socket.id);
+    if (existingPlayer) {
+      socket.emit('error', { message: 'Already in this room' });
+      return;
+    }
     
-    socket.join(roomCode);
-    io.to(roomCode).emit('playerJoined', { player, gameState: game.getState() });
+    const player = game.addPlayer(socket.id, playerName);
+    playerToGame.set(socket.id, normalizedCode);
+    
+    socket.join(normalizedCode);
+    
+    // Send roomJoined to the joining player
+    socket.emit('roomJoined', { roomCode: normalizedCode, player, gameState: game.getState() });
+    
+    // Notify others in the room
+    socket.to(normalizedCode).emit('playerJoined', { player, gameState: game.getState() });
+    
+    console.log(`${playerName} joined room ${normalizedCode}`);
   });
 
   // Start game
