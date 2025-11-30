@@ -95,8 +95,8 @@ class GameEngine {
     // For anonymous games, use generic player name
     const displayName = this.isAnonymous ? ANON_NAMES[this.players.length] : name;
     
-    // Starting money scales with buy-in: $1 buy-in = $100 in-game, $25 = $2500, etc.
-    const startingMoney = this.buyIn * 100;
+    // Players start with exactly their buy-in amount - feels like real money!
+    const startingMoney = this.buyIn;
     
     const player = {
       id: socketId,
@@ -139,11 +139,12 @@ class GameEngine {
     // Calculate total pot
     this.totalPot = this.players.length * this.buyIn;
     
-    // Price multiplier: scales standard Monopoly prices to match our economy
-    // Standard Monopoly: $1500 starting money, prices $60-$400
-    // Our game: buyIn * 100 starting money (e.g., $25 buy-in = $2500)
-    // So we scale prices proportionally: (buyIn * 100) / 1500
-    this.priceMultiplier = (this.buyIn * 100) / 1500;
+    // Price multiplier: scale standard Monopoly prices to match buy-in
+    // Standard Monopoly: $1500 starting, cheapest $60, most expensive $400
+    // We want: buyIn starting, cheapest ~buyIn/25, most expensive ~buyIn/4
+    // So multiplier = buyIn / 1500 (e.g., $25 buy-in -> 0.0167)
+    // This means $60 property becomes $1, $400 becomes ~$6.67
+    this.priceMultiplier = this.buyIn / 1500;
     
     // Scale all board prices
     this.scaleBoardPrices();
