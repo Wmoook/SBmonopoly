@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
+// In production, connect to same origin. In dev, use localhost:3001
 const SOCKET_URL = import.meta.env.PROD ? '' : 'http://localhost:3001';
 
 export const useGameStore = create((set, get) => ({
