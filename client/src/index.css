@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #213547;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.font-game {
+  font-family: 'Bangers', cursive;
+}
+
+/* Property color bars */
+.property-brown { background-color: #8B4513; }
+.property-lightblue { background-color: #87CEEB; }
+.property-pink { background-color: #FF69B4; }
+.property-orange { background-color: #FFA500; }
+.property-red { background-color: #FF0000; }
+.property-yellow { background-color: #FFFF00; }
+.property-green { background-color: #008000; }
+.property-darkblue { background-color: #00008B; }
+.property-railroad { background-color: #000000; }
+.property-utility { background-color: #808080; }
+
+/* Dice animation */
+@keyframes roll {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(90deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(1); }
+  75% { transform: rotate(270deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.dice-rolling {
+  animation: roll 0.3s ease-in-out infinite;
+}
+
+/* Board styles */
+.board-space {
+  @apply relative flex flex-col items-center justify-center text-xs font-bold;
+  transition: all 0.2s ease;
+}
+
+.board-space:hover {
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+/* Player token */
+.player-token {
+  @apply w-4 h-4 rounded-full border-2 border-white shadow-lg;
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Auction pulse */
+@keyframes auction-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+}
+
+.auction-active {
+  animation: auction-pulse 1s infinite;
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
