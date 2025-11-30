@@ -4,13 +4,24 @@ import { useGameStore } from '../store/gameStore';
 import Board from './Board';
 import PlayerPanel from './PlayerPanel';
 import AuctionModal from './AuctionModal';
+import BuyPropertyModal from './BuyPropertyModal';
+import TradeModal from './TradeModal';
+import TradeProposalModal from './TradeProposalModal';
 import DiceRoller from './DiceRoller';
 import Chat from './Chat';
 import PowerTokens from './PowerTokens';
 
 export default function GameBoard() {
-  const { gameState, playerId } = useGameStore();
+  const { 
+    gameState, 
+    playerId,
+    pendingPropertyDecision,
+    pendingTradeProposal,
+    buyProperty,
+    auctionProperty
+  } = useGameStore();
   const [showChat, setShowChat] = useState(false);
+  const [showTrade, setShowTrade] = useState(false);
 
   if (!gameState) return null;
 
@@ -19,23 +30,38 @@ export default function GameBoard() {
   const hasAuction = gameState.currentAuction !== null;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 min-h-[80vh]">
+    <div className="flex flex-col lg:flex-row gap-4 min-h-[85vh] p-2">
       {/* Left side - Players and controls */}
-      <div className="lg:w-64 space-y-4">
+      <div className="lg:w-72 space-y-4">
         <PlayerPanel />
         
-        {isMyTurn && !hasAuction && (
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="glass p-4 rounded-xl"
-          >
-            <DiceRoller />
-          </motion.div>
-        )}
+        <AnimatePresence mode="wait">
+          {isMyTurn && !hasAuction && !pendingPropertyDecision && (
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: -20 }}
+              className="glass p-4 rounded-xl"
+            >
+              <DiceRoller />
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {myPlayer && !myPlayer.bankrupt && (
-          <PowerTokens player={myPlayer} />
+          <div className="space-y-3">
+            <PowerTokens player={myPlayer} />
+            
+            {/* Trade Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowTrade(true)}
+              className="w-full py-3 glass rounded-xl flex items-center justify-center gap-2 text-yellow-400 font-bold hover:bg-white/10 transition-all"
+            >
+              🤝 Propose Trade
+            </motion.button>
+          </div>
         )}
       </div>
 
@@ -47,43 +73,106 @@ export default function GameBoard() {
       {/* Right side - Info and Chat */}
       <div className="lg:w-72 space-y-4">
         {/* Game info */}
-        <div className="glass p-4 rounded-xl">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-gray-400">Room</span>
-            <span className="font-mono font-bold text-yellow-400">{gameState.roomCode}</span>
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="glass p-4 rounded-xl space-y-3"
+        >
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 text-sm">Room</span>
+            <span className="font-mono font-bold text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">
+              {gameState.roomCode}
+            </span>
           </div>
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-gray-400">Turn</span>
-            <span className="font-bold">{gameState.turnNumber}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 text-sm">Turn</span>
+            <span className="font-bold text-lg">{gameState.turnNumber}</span>
           </div>
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-gray-400">Prize Pool</span>
-            <span className="font-bold text-green-400">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400 text-sm">Prize Pool</span>
+            <span className="font-bold text-xl text-green-400">
               ${gameState.totalPot?.toFixed(2) || '0.00'}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Time Left</span>
-            <span className="font-mono">
+            <span className="text-gray-400 text-sm">Time Left</span>
+            <span className="font-mono text-lg">
               {Math.floor(gameState.timeRemaining / 60000)}:{String(Math.floor((gameState.timeRemaining % 60000) / 1000)).padStart(2, '0')}
             </span>
           </div>
-        </div>
+        </motion.div>
+
+        {/* My balance */}
+        {myPlayer && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass p-4 rounded-xl"
+          >
+            <div className="text-gray-400 text-sm mb-1">Your Balance</div>
+            <div className="text-3xl font-bold text-green-400">
+              ${myPlayer.money.toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-400 mt-1">
+              Net Worth: ${myPlayer.netWorth?.toFixed(2)}
+            </div>
+          </motion.div>
+        )}
 
         {/* Toggle chat */}
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => setShowChat(!showChat)}
           className="w-full glass p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
         >
           💬 {showChat ? 'Hide Chat' : 'Show Chat'}
-        </button>
+        </motion.button>
 
-        {showChat && <Chat />}
+        <AnimatePresence>
+          {showChat && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <Chat />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* Buy/Auction Property Modal */}
+      <AnimatePresence>
+        {pendingPropertyDecision && (
+          <BuyPropertyModal
+            property={pendingPropertyDecision.property}
+            propertyIndex={pendingPropertyDecision.propertyIndex}
+            onBuy={() => buyProperty(pendingPropertyDecision.propertyIndex)}
+            onAuction={() => auctionProperty(pendingPropertyDecision.propertyIndex)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Auction Modal */}
       <AnimatePresence>
         {hasAuction && <AuctionModal />}
+      </AnimatePresence>
+
+      {/* Trade Modal */}
+      <AnimatePresence>
+        {showTrade && <TradeModal onClose={() => setShowTrade(false)} />}
+      </AnimatePresence>
+
+      {/* Incoming Trade Proposal */}
+      <AnimatePresence>
+        {pendingTradeProposal && (
+          <TradeProposalModal
+            proposal={pendingTradeProposal}
+            onClose={() => {}}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

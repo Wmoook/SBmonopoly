@@ -593,6 +593,32 @@ class GameEngine {
     return buildableProperties;
   }
 
+  buyProperty(playerId, propertyIndex) {
+    const player = this.players.find(p => p.id === playerId);
+    const property = this.board[propertyIndex];
+    
+    if (!player) {
+      return { error: 'Player not found' };
+    }
+    
+    if (property.owner) {
+      return { error: 'Property already owned' };
+    }
+    
+    if (player.money < property.price) {
+      return { error: 'Not enough money' };
+    }
+    
+    player.money -= property.price;
+    property.owner = playerId;
+    property.houses = 0;
+    player.properties.push(propertyIndex);
+    
+    this.updateNetWorth(player);
+    
+    return { success: true, property };
+  }
+
   buildHouse(playerId, propertyIndex) {
     const player = this.players.find(p => p.id === playerId);
     const property = this.board[propertyIndex];

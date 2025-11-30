@@ -407,6 +407,48 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Buy property directly
+  socket.on('buyProperty', ({ propertyIndex }) => {
+    const roomCode = playerToGame.get(socket.id);
+    const game = games.get(roomCode);
+    
+    if (!game) return;
+    
+    const result = game.buyProperty(socket.id, propertyIndex);
+    
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+    
+    io.to(roomCode).emit('propertyPurchased', {
+      playerId: socket.id,
+      propertyIndex,
+      property: game.board[propertyIndex],
+      gameState: game.getState()
+    });
+    
+    // End turn after purchase
+    setTimeout(() => {
+      endTurn(roomCode, game);
+    }, 1000);
+  });
+
+  // Auction property (player chose not to buy)
+  socket.on('auctionProperty', ({ propertyIndex }) => {
+    const roomCode = playerToGame.get(socket.id);
+    const game = games.get(roomCode);
+    
+    if (!game) return;
+    
+    game.startAuction(propertyIndex);
+    io.to(roomCode).emit('auctionStarted', {
+      property: game.board[propertyIndex],
+      propertyIndex,
+      gameState: game.getState()
+    });
+  });
+
   // Build house/hotel
   socket.on('buildHouse', ({ propertyIndex }) => {
     const roomCode = playerToGame.get(socket.id);
@@ -561,9 +603,8 @@ function handleLanding(roomCode, playerId, game) {
   
   if (space.type === 'property') {
     if (!space.owner) {
-      // Start auction
-      game.startAuction(player.position);
-      io.to(roomCode).emit('auctionStarted', {
+      // Give player choice to buy or auction
+      io.to(playerId).emit('propertyLanded', {
         property: space,
         propertyIndex: player.position,
         gameState: game.getState()

@@ -32,6 +32,8 @@ export const useGameStore = create((set, get) => ({
   currentDrafter: null,
   lastDice: null,
   isRolling: false,
+  pendingTradeProposal: null, // Incoming trade proposal
+  pendingPropertyDecision: null, // Property to buy or auction
   
   // Actions
   connect: () => {
@@ -164,12 +166,26 @@ export const useGameStore = create((set, get) => ({
       set({ gameState });
     });
     
-    socket.on('tradeProposed', ({ fromPlayerId, offer }) => {
-      // Handle trade UI
+    socket.on('tradeProposed', ({ fromPlayerId, offer, gameState }) => {
+      set({ pendingTradeProposal: { fromPlayerId, offer }, gameState });
     });
     
     socket.on('tradeCompleted', ({ gameState }) => {
-      set({ gameState });
+      set({ gameState, pendingTradeProposal: null });
+    });
+    
+    socket.on('tradeDeclined', ({ byPlayerId }) => {
+      // Show notification that trade was declined
+      set({ error: 'Trade was declined' });
+    });
+    
+    socket.on('propertyLanded', ({ property, propertyIndex, gameState }) => {
+      // Show buy or auction modal
+      set({ pendingPropertyDecision: { property, propertyIndex }, gameState });
+    });
+    
+    socket.on('propertyPurchased', ({ gameState }) => {
+      set({ gameState, pendingPropertyDecision: null });
     });
     
     socket.on('gameOver', ({ winner, gameState }) => {
@@ -306,6 +322,38 @@ export const useGameStore = create((set, get) => ({
     const { socket } = get();
     if (socket) {
       socket.emit('proposeTrade', { targetPlayerId, offer });
+    }
+  },
+  
+  acceptTrade: (fromPlayerId, offer) => {
+    const { socket } = get();
+    if (socket) {
+      socket.emit('acceptTrade', { fromPlayerId, offer });
+      set({ pendingTradeProposal: null });
+    }
+  },
+  
+  declineTrade: (fromPlayerId) => {
+    const { socket } = get();
+    if (socket) {
+      socket.emit('declineTrade', { fromPlayerId });
+      set({ pendingTradeProposal: null });
+    }
+  },
+  
+  buyProperty: (propertyIndex) => {
+    const { socket } = get();
+    if (socket) {
+      socket.emit('buyProperty', { propertyIndex });
+      set({ pendingPropertyDecision: null });
+    }
+  },
+  
+  auctionProperty: (propertyIndex) => {
+    const { socket } = get();
+    if (socket) {
+      socket.emit('auctionProperty', { propertyIndex });
+      set({ pendingPropertyDecision: null });
     }
   },
   
