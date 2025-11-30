@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/gameStore';
 import Board from './Board';
 import PlayerPanel from './PlayerPanel';
+import MyProperties from './MyProperties';
 import AuctionModal from './AuctionModal';
 import BuyPropertyModal from './BuyPropertyModal';
 import TradeModal from './TradeModal';
@@ -70,8 +71,8 @@ export default function GameBoard() {
         <Board />
       </div>
 
-      {/* Right side - Info and Chat */}
-      <div className="lg:w-72 space-y-4">
+      {/* Right side - Info, Properties and Chat */}
+      <div className="lg:w-80 space-y-4 max-h-[85vh] overflow-y-auto scrollbar-thin">
         {/* Game info */}
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
@@ -119,6 +120,9 @@ export default function GameBoard() {
             </div>
           </motion.div>
         )}
+
+        {/* My Properties */}
+        <MyProperties />
 
         {/* Toggle chat */}
         <motion.button
