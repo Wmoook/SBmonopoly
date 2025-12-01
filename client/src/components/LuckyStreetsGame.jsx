@@ -3,96 +3,79 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLuckyStreetsStore } from '../store/luckyStreetsStore';
 import SpinWheel from './SpinWheel';
 
-// Simple linear board for Lucky Streets
+// 30 SPACE BOARD - BIGGER AND COOLER!
 const BOARD_SPACES = [
-  { name: 'GO', type: 'go', color: null, icon: '🚀' },
-  { name: 'Vine', type: 'property', color: '#8B4513' },
-  { name: 'Luck', type: 'luck', color: null, icon: '🍀' },
-  { name: 'Oak', type: 'property', color: '#8B4513' },
-  { name: 'Palm', type: 'property', color: '#87CEEB' },
-  { name: 'Train', type: 'property', color: '#1f2937', icon: '🚂' },
-  { name: 'Rose', type: 'property', color: '#87CEEB' },
-  { name: 'Luck', type: 'luck', color: null, icon: '🍀' },
-  { name: 'Cedar', type: 'property', color: '#EC4899' },
-  { name: 'Jail', type: 'jail', color: null, icon: '⛓️' },
-  { name: 'Maple', type: 'property', color: '#EC4899' },
-  { name: 'Elec', type: 'property', color: '#fbbf24', icon: '⚡' },
-  { name: 'Pine', type: 'property', color: '#F97316' },
-  { name: 'Luck', type: 'luck', color: null, icon: '🍀' },
-  { name: 'Beach', type: 'property', color: '#F97316' },
-  { name: 'Train', type: 'property', color: '#1f2937', icon: '🚂' },
-  { name: 'Sun', type: 'property', color: '#EF4444' },
-  { name: 'Park', type: 'free', color: null, icon: '🅿️' },
-  { name: 'Moon', type: 'property', color: '#EF4444' },
-  { name: 'Water', type: 'property', color: '#fbbf24', icon: '💧' },
-  { name: 'Star', type: 'property', color: '#22C55E' },
-  { name: 'Luck', type: 'luck', color: null, icon: '🍀' },
-  { name: 'Gold', type: 'property', color: '#22C55E' },
-  { name: 'Diamond', type: 'property', color: '#3B82F6', icon: '💎' },
+  { id: 0, name: 'GO!', type: 'go', emoji: '🚀', color: null },
+  { id: 1, name: 'Crypto', type: 'property', emoji: '₿', color: '#9C27B0' },
+  { id: 2, name: 'SPIN', type: 'spin', emoji: '🎡', color: '#FFD700' },
+  { id: 3, name: 'Meme', type: 'property', emoji: '🐸', color: '#E91E63' },
+  { id: 4, name: 'Diamond', type: 'property', emoji: '💎', color: '#3F51B5' },
+  { id: 5, name: 'Lucky', type: 'lucky', emoji: '🍀', color: '#4CAF50' },
+  { id: 6, name: 'Rocket', type: 'property', emoji: '🚀', color: '#2196F3' },
+  { id: 7, name: 'JACKPOT', type: 'jackpot', emoji: '🎰', color: '#FFD700' },
+  { id: 8, name: 'Moon', type: 'property', emoji: '🌙', color: '#00BCD4' },
+  { id: 9, name: 'SPIN', type: 'spin', emoji: '🎡', color: '#FFD700' },
+  { id: 10, name: 'NFT', type: 'property', emoji: '🖼️', color: '#009688' },
+  { id: 11, name: 'YOLO', type: 'property', emoji: '🎲', color: '#4CAF50' },
+  { id: 12, name: 'FREE', type: 'free', emoji: '🅿️', color: null },
+  { id: 13, name: 'Degen', type: 'property', emoji: '🎰', color: '#8BC34A' },
+  { id: 14, name: 'Whale', type: 'property', emoji: '🐋', color: '#CDDC39' },
+  { id: 15, name: 'SPIN', type: 'spin', emoji: '🎡', color: '#FFD700' },
+  { id: 16, name: 'Lambo', type: 'property', emoji: '🏎️', color: '#FFC107' },
+  { id: 17, name: 'CHAOS', type: 'chaos', emoji: '💥', color: '#FF5722' },
+  { id: 18, name: 'Pent', type: 'property', emoji: '🏰', color: '#FF9800' },
+  { id: 19, name: 'Ape', type: 'property', emoji: '🦍', color: '#FF5722' },
+  { id: 20, name: 'SPIN', type: 'spin', emoji: '🎡', color: '#FFD700' },
+  { id: 21, name: 'Billion', type: 'property', emoji: '💰', color: '#795548' },
+  { id: 22, name: 'TAX', type: 'tax', emoji: '🏛️', color: '#8B0000' },
+  { id: 23, name: 'Gold', type: 'property', emoji: '🏆', color: '#FFD700' },
+  { id: 24, name: 'SPIN', type: 'spin', emoji: '🎡', color: '#FFD700' },
+  { id: 25, name: 'Castle', type: 'property', emoji: '🏯', color: '#607D8B' },
+  { id: 26, name: 'Lucky', type: 'lucky', emoji: '🍀', color: '#4CAF50' },
+  { id: 27, name: 'Mall', type: 'property', emoji: '🏬', color: '#E91E63' },
+  { id: 28, name: 'Dragon', type: 'property', emoji: '🐉', color: '#F44336' },
+  { id: 29, name: 'THRONE', type: 'property', emoji: '👑', color: '#9C27B0' },
 ];
 
-function GameSpace({ space, index, players, board, isActive }) {
-  const playersHere = players.filter(p => p.position === index && !p.bankrupt);
-  const boardSpace = board?.[index];
-  const owner = boardSpace?.owner;
-  const ownerPlayer = players.find(p => p.id === owner);
-  const houses = players.reduce((h, p) => h + (p.houses?.[index] || 0), 0);
-
+function GameSpace({ space, index, players, isActive, isHot }) {
+  const playersHere = players?.filter(p => p.position === index) || [];
+  
   return (
     <motion.div
-      className={`relative w-12 h-14 md:w-14 md:h-16 rounded-lg flex flex-col items-center justify-center text-xs font-bold border-2 transition-all ${
-        isActive ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-white/10'
+      className={`relative w-10 h-12 md:w-12 md:h-14 rounded-lg flex flex-col items-center justify-center text-xs font-bold border-2 transition-all cursor-pointer ${
+        isActive ? 'border-yellow-400 shadow-lg shadow-yellow-400/50 scale-110 z-20' : 
+        isHot ? 'border-orange-400 shadow-md shadow-orange-400/30' :
+        'border-white/10 hover:border-white/30'
       }`}
       style={{ 
-        backgroundColor: space.color ? `${space.color}20` : 'rgba(255,255,255,0.05)',
-        borderTopColor: space.color || 'transparent',
+        backgroundColor: space.color ? `${space.color}40` : 'rgba(255,255,255,0.05)',
+        borderTopColor: space.color || undefined,
         borderTopWidth: space.color ? '4px' : '2px'
       }}
-      whileHover={{ scale: 1.1, zIndex: 10 }}
+      whileHover={{ scale: 1.15, zIndex: 10 }}
+      animate={isActive ? { scale: [1.1, 1.15, 1.1] } : {}}
+      transition={{ duration: 0.5, repeat: isActive ? Infinity : 0 }}
     >
-      {/* Space content */}
-      {space.icon ? (
-        <span className="text-lg">{space.icon}</span>
-      ) : (
-        <span className="text-[10px] text-gray-300 truncate w-full text-center px-0.5">
-          {space.name}
-        </span>
-      )}
-      
-      {/* Price */}
-      {boardSpace?.price && !boardSpace.owner && (
-        <span className="text-[8px] text-green-400">${boardSpace.price}</span>
-      )}
-      
-      {/* Owner indicator */}
-      {ownerPlayer && (
-        <div 
-          className="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-white"
-          style={{ backgroundColor: ownerPlayer.color }}
-        />
-      )}
-      
-      {/* Houses */}
-      {houses > 0 && (
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
-          {Array(houses).fill(0).map((_, i) => (
-            <div key={i} className="w-1.5 h-1.5 bg-green-500 rounded-sm" />
-          ))}
-        </div>
-      )}
+      <span className="text-lg">{space.emoji}</span>
+      <span className="text-[8px] text-gray-300 truncate w-full text-center">
+        {space.name}
+      </span>
       
       {/* Players on space */}
       {playersHere.length > 0 && (
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex -space-x-1">
+        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex -space-x-2">
           {playersHere.map(p => (
             <motion.div
               key={p.id}
-              className="w-4 h-4 rounded-full border-2 border-white shadow-lg"
-              style={{ backgroundColor: p.color }}
+              className="w-5 h-5 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[8px] font-bold"
+              style={{ backgroundColor: p.color || '#3B82F6' }}
               layoutId={`player-${p.id}`}
+              initial={false}
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 0.5 }}
-            />
+            >
+              {p.name?.charAt(0)}
+            </motion.div>
           ))}
         </div>
       )}
@@ -105,147 +88,228 @@ export default function LuckyStreetsGame() {
     gameState, 
     playerId,
     rollDice,
-    buyProperty,
-    skipBuy,
-    endTurn,
-    lastSpin,
-    isSpinning,
-    pendingBuy,
+    makeChoice,
+    chooseTeleport,
+    chooseFreeze,
   } = useLuckyStreetsStore();
 
   const [showWheel, setShowWheel] = useState(false);
   const [currentSpin, setCurrentSpin] = useState(null);
-  const [pendingAction, setPendingAction] = useState(null);
+  const [turnTimeLeft, setTurnTimeLeft] = useState(10);
+  const [lastMessage, setLastMessage] = useState(null);
+  const [pendingChoice, setPendingChoice] = useState(null);
+  const [showTeleportPicker, setShowTeleportPicker] = useState(false);
+  const [showFreezePicker, setShowFreezePicker] = useState(false);
+
+  // Listen for wheel trigger
+  useEffect(() => {
+    const socket = useLuckyStreetsStore.getState().socket;
+    if (!socket) return;
+
+    socket.on('triggerSpin', ({ wheelOutcome }) => {
+      setCurrentSpin(wheelOutcome);
+      setShowWheel(true);
+    });
+
+    socket.on('turnTimerUpdate', ({ timeLeft }) => {
+      setTurnTimeLeft(timeLeft);
+    });
+
+    socket.on('wheelResult', ({ message }) => {
+      setLastMessage(message);
+      setTimeout(() => setLastMessage(null), 3000);
+    });
+
+    socket.on('choiceResult', ({ message }) => {
+      setLastMessage(message);
+      setPendingChoice(null);
+      setTimeout(() => setLastMessage(null), 3000);
+    });
+
+    socket.on('makeChoice', ({ outcome, choices }) => {
+      setPendingChoice({ outcome, choices });
+    });
+
+    socket.on('chooseTeleportSpace', () => {
+      setShowTeleportPicker(true);
+    });
+
+    socket.on('chooseFreezeTarget', ({ players }) => {
+      setShowFreezePicker(players);
+    });
+
+    socket.on('landingResult', ({ message }) => {
+      if (message) {
+        setLastMessage(message);
+        setTimeout(() => setLastMessage(null), 3000);
+      }
+    });
+
+    socket.on('turnTimeout', ({ message }) => {
+      setLastMessage(message);
+      setTimeout(() => setLastMessage(null), 3000);
+    });
+
+    return () => {
+      socket.off('triggerSpin');
+      socket.off('turnTimerUpdate');
+      socket.off('wheelResult');
+      socket.off('choiceResult');
+      socket.off('makeChoice');
+      socket.off('chooseTeleportSpace');
+      socket.off('chooseFreezeTarget');
+      socket.off('landingResult');
+      socket.off('turnTimeout');
+    };
+  }, []);
 
   if (!gameState) return null;
 
-  const myPlayer = gameState.players.find(p => p.id === playerId);
-  const currentPlayer = gameState.currentPlayer;
+  const myPlayer = gameState.players?.find(p => p.id === playerId);
+  const currentPlayer = gameState.players?.[gameState.currentPlayerIndex];
   const isMyTurn = currentPlayer?.id === playerId;
-  const board = gameState.board || [];
-  
-  // Timer display
-  const minutes = Math.floor(gameState.timeRemaining / 60000);
-  const seconds = Math.floor((gameState.timeRemaining % 60000) / 1000);
-
-  // Handle spin result
-  useEffect(() => {
-    if (lastSpin) {
-      setCurrentSpin(lastSpin);
-      setShowWheel(true);
-    }
-  }, [lastSpin]);
 
   const handleRoll = () => {
+    setShowWheel(false);
     rollDice();
   };
 
   const handleSpinComplete = () => {
     setTimeout(() => {
       setShowWheel(false);
-      // Show action options if available
-    }, 1500);
+    }, 2000);
   };
 
-  // Determine board layout - make it circular/track style
-  const topRow = BOARD_SPACES.slice(0, 6);
-  const rightCol = BOARD_SPACES.slice(6, 12);
-  const bottomRow = BOARD_SPACES.slice(12, 18).reverse();
-  const leftCol = BOARD_SPACES.slice(18, 24).reverse();
+  const handleChoice = (index) => {
+    makeChoice(index);
+    setPendingChoice(null);
+  };
+
+  const handleTeleport = (spaceId) => {
+    chooseTeleport(spaceId);
+    setShowTeleportPicker(false);
+  };
+
+  const handleFreeze = (targetId) => {
+    chooseFreeze(targetId);
+    setShowFreezePicker(false);
+  };
+
+  // Board layout - track style (8 top, 7 right, 8 bottom, 7 left)
+  const topRow = BOARD_SPACES.slice(0, 8);
+  const rightCol = BOARD_SPACES.slice(8, 15);
+  const bottomRow = [...BOARD_SPACES.slice(15, 23)].reverse();
+  const leftCol = [...BOARD_SPACES.slice(23, 30)].reverse();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
-      {/* Top Bar - Timer & Pot */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-2 md:p-4">
+      {/* TOP BAR - Turn Timer & Pot */}
       <div className="flex justify-between items-center mb-4">
+        {/* TURN TIMER - 10 SECONDS! */}
         <motion.div 
-          className="glass px-6 py-3 rounded-full flex items-center gap-3"
-          animate={gameState.timeRemaining < 60000 ? { scale: [1, 1.05, 1] } : {}}
-          transition={{ repeat: Infinity, duration: 0.5 }}
+          className={`glass px-4 py-2 md:px-6 md:py-3 rounded-full flex items-center gap-2 ${
+            turnTimeLeft <= 3 ? 'bg-red-500/30' : ''
+          }`}
+          animate={turnTimeLeft <= 3 ? { scale: [1, 1.1, 1] } : {}}
+          transition={{ duration: 0.3, repeat: turnTimeLeft <= 3 ? Infinity : 0 }}
         >
-          <span className="text-2xl">⏱️</span>
-          <span className={`text-3xl font-mono font-bold ${
-            gameState.timeRemaining < 60000 ? 'text-red-400' : 'text-white'
+          <span className="text-xl">⏱️</span>
+          <span className={`text-2xl md:text-3xl font-mono font-bold ${
+            turnTimeLeft <= 3 ? 'text-red-400 animate-pulse' : 
+            turnTimeLeft <= 5 ? 'text-yellow-400' : 'text-white'
           }`}>
-            {minutes}:{seconds.toString().padStart(2, '0')}
+            {turnTimeLeft}s
+          </span>
+          {isMyTurn && turnTimeLeft <= 3 && (
+            <span className="text-red-400 text-sm animate-bounce">HURRY!</span>
+          )}
+        </motion.div>
+
+        {/* Current Turn Indicator */}
+        <motion.div 
+          className="glass px-4 py-2 rounded-full flex items-center gap-2"
+          style={{ borderColor: currentPlayer?.color, borderWidth: 2 }}
+        >
+          <div 
+            className="w-6 h-6 rounded-full"
+            style={{ backgroundColor: currentPlayer?.color || '#3B82F6' }}
+          />
+          <span className="font-bold">
+            {isMyTurn ? '🎯 YOUR TURN!' : `${currentPlayer?.name}'s turn`}
           </span>
         </motion.div>
 
+        {/* POT */}
         <motion.div 
-          className="glass px-6 py-3 rounded-full flex items-center gap-3"
-          animate={{ boxShadow: ['0 0 20px rgba(34,197,94,0.3)', '0 0 40px rgba(34,197,94,0.6)', '0 0 20px rgba(34,197,94,0.3)'] }}
+          className="glass px-4 py-2 md:px-6 md:py-3 rounded-full flex items-center gap-2"
+          animate={{ 
+            boxShadow: ['0 0 20px rgba(34,197,94,0.3)', '0 0 40px rgba(34,197,94,0.6)', '0 0 20px rgba(34,197,94,0.3)'] 
+          }}
           transition={{ repeat: Infinity, duration: 2 }}
         >
-          <span className="text-2xl">💰</span>
-          <span className="text-3xl font-bold text-green-400">
-            ${gameState.totalPot?.toFixed(2)}
+          <span className="text-xl">💰</span>
+          <span className="text-2xl md:text-3xl font-bold text-green-400">
+            ${gameState.pot || 0}
           </span>
         </motion.div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
-        {/* Left - Players */}
-        <div className="lg:w-64 space-y-3">
-          <h2 className="text-lg font-bold text-gray-400 px-2">Players</h2>
-          {gameState.players.map((player, idx) => {
-            const isCurrentPlayer = currentPlayer?.id === player.id;
+        {/* LEFT SIDE - Players */}
+        <div className="lg:w-56 space-y-2">
+          <h2 className="text-sm font-bold text-gray-400 px-2">PLAYERS</h2>
+          {gameState.players?.map((player) => {
+            const isCurrentTurn = currentPlayer?.id === player.id;
             const isMe = player.id === playerId;
             
             return (
               <motion.div
                 key={player.id}
-                className={`glass p-4 rounded-xl transition-all ${
-                  isCurrentPlayer ? 'ring-2 ring-yellow-400' : ''
-                } ${player.bankrupt ? 'opacity-50' : ''}`}
-                animate={isCurrentPlayer ? { scale: [1, 1.02, 1] } : {}}
+                className={`glass p-3 rounded-xl transition-all ${
+                  isCurrentTurn ? 'ring-2 ring-yellow-400 shadow-lg shadow-yellow-400/20' : ''
+                }`}
+                animate={isCurrentTurn ? { scale: [1, 1.02, 1] } : {}}
                 transition={{ repeat: Infinity, duration: 1 }}
               >
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-2 mb-2">
                   <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2 border-white/30"
-                    style={{ backgroundColor: player.color }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 border-white/30"
+                    style={{ backgroundColor: player.color || '#3B82F6' }}
                   >
-                    {player.name.charAt(0)}
+                    {player.name?.charAt(0)}
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm flex items-center gap-1 truncate">
                       {player.name}
-                      {isMe && <span className="text-xs bg-blue-500/30 text-blue-400 px-2 py-0.5 rounded">YOU</span>}
-                      {isCurrentPlayer && <span className="text-xs bg-yellow-500/30 text-yellow-400 px-2 py-0.5 rounded">TURN</span>}
+                      {isMe && <span className="text-[10px] bg-blue-500/30 text-blue-400 px-1.5 py-0.5 rounded">YOU</span>}
                     </div>
-                    <div className="text-sm text-gray-400">
-                      {player.properties.length} properties
+                    <div className="text-xs text-gray-400">
+                      {player.properties?.length || 0} properties
                     </div>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2 text-center text-sm">
-                  <div className="bg-black/30 rounded-lg py-2">
-                    <div className="text-gray-500 text-xs">Cash</div>
-                    <div className={`font-bold ${player.money < 1 ? 'text-red-400' : 'text-green-400'}`}>
-                      ${player.money?.toFixed(2)}
+                <div className="flex justify-between text-center text-xs">
+                  <div className="bg-black/30 rounded px-2 py-1">
+                    <div className="text-gray-500">Cash</div>
+                    <div className={`font-bold ${player.cash < 2 ? 'text-red-400' : 'text-green-400'}`}>
+                      ${player.cash || 0}
                     </div>
                   </div>
-                  <div className="bg-black/30 rounded-lg py-2">
-                    <div className="text-gray-500 text-xs">Worth</div>
-                    <div className="font-bold text-yellow-400">
-                      ${player.netWorth?.toFixed(2)}
-                    </div>
+                  <div className="bg-black/30 rounded px-2 py-1">
+                    <div className="text-gray-500">Space</div>
+                    <div className="font-bold">{player.position || 0}</div>
                   </div>
                 </div>
 
-                {/* Streak indicator */}
-                {player.streak > 0 && (
-                  <div className="mt-2 flex items-center gap-1 text-orange-400">
-                    <span>🔥</span>
-                    <span className="text-sm font-bold">Streak: {player.streak}</span>
+                {player.hasInsurance && (
+                  <div className="mt-1 text-xs text-blue-400 flex items-center gap-1">
+                    🛡️ Insured
                   </div>
                 )}
-
-                {/* Shield indicator */}
-                {player.shield && (
-                  <div className="mt-2 flex items-center gap-1 text-blue-400">
-                    <span>🛡️</span>
-                    <span className="text-sm">Shield Active</span>
+                {player.isFrozen && (
+                  <div className="mt-1 text-xs text-cyan-400 flex items-center gap-1">
+                    ❄️ Frozen
                   </div>
                 )}
               </motion.div>
@@ -253,222 +317,286 @@ export default function LuckyStreetsGame() {
           })}
         </div>
 
-        {/* Center - Board & Wheel */}
-        <div className="flex-1 flex flex-col items-center gap-6">
+        {/* CENTER - Game Board */}
+        <div className="flex-1 flex flex-col items-center gap-4">
           {/* Board - Track Layout */}
-          <div className="relative bg-black/30 p-4 rounded-2xl backdrop-blur">
+          <div className="relative bg-black/40 p-3 rounded-2xl backdrop-blur border border-white/10">
             <div className="flex flex-col gap-1">
               {/* Top row */}
               <div className="flex gap-1 justify-center">
-                {topRow.map((space, i) => (
+                {topRow.map((space) => (
                   <GameSpace 
-                    key={i} 
+                    key={space.id} 
                     space={space} 
-                    index={i} 
+                    index={space.id} 
                     players={gameState.players}
-                    board={board}
-                    isActive={myPlayer?.position === i}
+                    isActive={myPlayer?.position === space.id}
+                    isHot={space.type === 'spin'}
                   />
                 ))}
               </div>
               
-              {/* Middle section with side columns */}
+              {/* Middle section */}
               <div className="flex justify-between">
-                {/* Left column (reversed) */}
+                {/* Left column */}
                 <div className="flex flex-col gap-1">
-                  {leftCol.map((space, i) => (
+                  {leftCol.map((space) => (
                     <GameSpace 
-                      key={23-i} 
+                      key={space.id} 
                       space={space} 
-                      index={23-i} 
+                      index={space.id} 
                       players={gameState.players}
-                      board={board}
-                      isActive={myPlayer?.position === 23-i}
+                      isActive={myPlayer?.position === space.id}
+                      isHot={space.type === 'spin'}
                     />
                   ))}
                 </div>
                 
-                {/* Center content */}
-                <div className="flex-1 flex items-center justify-center p-4">
-                  {showWheel ? (
-                    <SpinWheel 
-                      spinning={isSpinning}
-                      result={currentSpin}
-                      onSpinComplete={handleSpinComplete}
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <h1 className="text-4xl font-black bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent mb-2">
-                        LUCKY STREETS
-                      </h1>
-                      <p className="text-gray-400">Roll • Spin • Win!</p>
-                      
-                      {isMyTurn && (
-                        <motion.button
-                          onClick={handleRoll}
-                          className="mt-6 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-bold text-xl shadow-lg hover:shadow-green-500/50 transition-all"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          animate={{ scale: [1, 1.05, 1] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                        >
-                          🎲 ROLL & SPIN! 🎲
-                        </motion.button>
-                      )}
-                      
-                      {!isMyTurn && currentPlayer && (
-                        <div className="mt-6 text-gray-400">
-                          Waiting for <span className="font-bold" style={{ color: currentPlayer.color }}>{currentPlayer.name}</span>...
+                {/* Center - Wheel or Roll Button */}
+                <div className="flex-1 flex items-center justify-center p-4 min-h-[300px] md:min-h-[350px]">
+                  <AnimatePresence mode="wait">
+                    {showWheel ? (
+                      <motion.div
+                        key="wheel"
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: 180 }}
+                      >
+                        <SpinWheel 
+                          spinning={true}
+                          result={currentSpin}
+                          onSpinComplete={handleSpinComplete}
+                        />
+                      </motion.div>
+                    ) : pendingChoice ? (
+                      <motion.div
+                        key="choice"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="text-center glass p-6 rounded-2xl"
+                      >
+                        <div className="text-3xl mb-2">{pendingChoice.outcome?.label}</div>
+                        <div className="text-lg text-gray-300 mb-4">{pendingChoice.outcome?.description}</div>
+                        <div className="flex gap-4">
+                          <motion.button
+                            onClick={() => handleChoice(0)}
+                            className="px-6 py-3 bg-gradient-to-r from-red-500 to-orange-500 rounded-xl font-bold text-lg"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            🎲 {pendingChoice.choices[0]}
+                          </motion.button>
+                          <motion.button
+                            onClick={() => handleChoice(1)}
+                            className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl font-bold text-lg"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            🛡️ {pendingChoice.choices[1]}
+                          </motion.button>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="main"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center"
+                      >
+                        <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 bg-clip-text text-transparent mb-2">
+                          LUCKY STREETS
+                        </h1>
+                        <p className="text-gray-400 text-sm mb-4">30 Spaces • 30 Wheel Outcomes</p>
+                        
+                        {isMyTurn && (
+                          <motion.button
+                            onClick={handleRoll}
+                            className={`px-8 py-4 rounded-xl font-bold text-xl shadow-lg transition-all ${
+                              turnTimeLeft <= 3 
+                                ? 'bg-gradient-to-r from-red-500 to-orange-500 animate-pulse shadow-red-500/50' 
+                                : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:shadow-green-500/50'
+                            }`}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            animate={{ scale: [1, 1.05, 1] }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                          >
+                            🎲 ROLL NOW! 🎲
+                          </motion.button>
+                        )}
+                        
+                        {!isMyTurn && currentPlayer && (
+                          <div className="text-gray-400">
+                            Waiting for <span className="font-bold" style={{ color: currentPlayer.color }}>{currentPlayer.name}</span>...
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 {/* Right column */}
                 <div className="flex flex-col gap-1">
-                  {rightCol.map((space, i) => (
+                  {rightCol.map((space) => (
                     <GameSpace 
-                      key={6+i} 
+                      key={space.id} 
                       space={space} 
-                      index={6+i} 
+                      index={space.id} 
                       players={gameState.players}
-                      board={board}
-                      isActive={myPlayer?.position === 6+i}
+                      isActive={myPlayer?.position === space.id}
+                      isHot={space.type === 'spin'}
                     />
                   ))}
                 </div>
               </div>
               
-              {/* Bottom row (reversed) */}
+              {/* Bottom row */}
               <div className="flex gap-1 justify-center">
-                {bottomRow.map((space, i) => (
+                {bottomRow.map((space) => (
                   <GameSpace 
-                    key={17-i} 
+                    key={space.id} 
                     space={space} 
-                    index={17-i} 
+                    index={space.id} 
                     players={gameState.players}
-                    board={board}
-                    isActive={myPlayer?.position === 17-i}
+                    isActive={myPlayer?.position === space.id}
+                    isHot={space.type === 'spin'}
                   />
                 ))}
               </div>
             </div>
           </div>
+
+          {/* Round Info */}
+          <div className="text-center text-gray-400 text-sm">
+            Round {gameState.roundNumber || 1} / {gameState.maxRounds || 20}
+          </div>
         </div>
 
-        {/* Right - My Properties & Actions */}
-        <div className="lg:w-64 space-y-4">
+        {/* RIGHT SIDE - My Stats */}
+        <div className="lg:w-56 space-y-3">
           {myPlayer && (
-            <>
-              {/* Quick Stats */}
-              <div className="glass p-4 rounded-xl">
-                <h3 className="font-bold mb-3 text-gray-400">Your Stats</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Cash</span>
-                    <span className="font-bold text-green-400">${myPlayer.money?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Properties</span>
-                    <span className="font-bold">{myPlayer.properties.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Net Worth</span>
-                    <span className="font-bold text-yellow-400">${myPlayer.netWorth?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Streak</span>
-                    <span className="font-bold text-orange-400">{myPlayer.streak || 0} 🔥</span>
-                  </div>
+            <div className="glass p-4 rounded-xl">
+              <h3 className="font-bold mb-3 text-gray-400 text-sm">YOUR STATS</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 text-sm">💵 Cash</span>
+                  <span className={`font-bold text-lg ${myPlayer.cash < 2 ? 'text-red-400' : 'text-green-400'}`}>
+                    ${myPlayer.cash || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 text-sm">🏠 Properties</span>
+                  <span className="font-bold">{myPlayer.properties?.length || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 text-sm">📍 Position</span>
+                  <span className="font-bold">{myPlayer.position || 0}</span>
                 </div>
               </div>
-
-              {/* My Properties */}
-              <div className="glass p-4 rounded-xl max-h-64 overflow-y-auto">
-                <h3 className="font-bold mb-3 text-gray-400">Your Properties</h3>
-                {myPlayer.properties.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No properties yet!</p>
-                ) : (
-                  <div className="space-y-2">
-                    {myPlayer.properties.map(propIndex => {
-                      const prop = board[propIndex];
-                      const houses = myPlayer.houses?.[propIndex] || 0;
-                      return (
-                        <div 
-                          key={propIndex}
-                          className="flex items-center justify-between bg-black/30 rounded-lg p-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded"
-                              style={{ backgroundColor: prop?.color || '#666' }}
-                            />
-                            <span className="text-sm">{prop?.name}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {Array(houses).fill(0).map((_, i) => (
-                              <div key={i} className="w-2 h-2 bg-green-500 rounded-sm" />
-                            ))}
-                            <span className="text-xs text-gray-400">${prop?.rent}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </>
+            </div>
           )}
+
+          {/* Wheel Legend */}
+          <div className="glass p-4 rounded-xl">
+            <h3 className="font-bold mb-2 text-gray-400 text-sm">WHEEL OUTCOMES</h3>
+            <div className="grid grid-cols-3 gap-1 text-lg">
+              <div title="Jackpot">🎰</div>
+              <div title="Triple">3️⃣</div>
+              <div title="Double">2️⃣</div>
+              <div title="Gamble">🎲</div>
+              <div title="Duel">⚔️</div>
+              <div title="Steal">🦝</div>
+              <div title="Freeze">❄️</div>
+              <div title="Teleport">✨</div>
+              <div title="Mystery">❓</div>
+            </div>
+            <p className="text-[10px] text-gray-500 mt-2">Land on 🎡 to spin!</p>
+          </div>
         </div>
       </div>
 
-      {/* Buy Property Modal */}
+      {/* MESSAGE POPUP */}
       <AnimatePresence>
-        {pendingBuy && (
+        {lastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.8 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="glass px-8 py-4 rounded-2xl text-xl font-bold text-center shadow-2xl border border-white/20">
+              {lastMessage}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TELEPORT PICKER */}
+      <AnimatePresence>
+        {showTeleportPicker && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="glass p-8 rounded-2xl max-w-md w-full text-center"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="glass p-6 rounded-2xl max-w-2xl w-full"
             >
-              <h2 className="text-2xl font-bold mb-4">🏠 Buy Property?</h2>
-              <div 
-                className="w-16 h-16 mx-auto rounded-lg mb-4"
-                style={{ backgroundColor: pendingBuy.property?.color || '#666' }}
-              />
-              <p className="text-xl mb-2">{pendingBuy.property?.name}</p>
-              <p className="text-3xl font-bold text-green-400 mb-6">${pendingBuy.price}</p>
-              
-              <div className="flex gap-4 justify-center">
-                <motion.button
-                  onClick={buyProperty}
-                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-bold text-lg"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  disabled={myPlayer?.money < pendingBuy.price}
-                >
-                  ✓ BUY
-                </motion.button>
-                <motion.button
-                  onClick={skipBuy}
-                  className="px-8 py-3 bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl font-bold text-lg"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  ✗ SKIP
-                </motion.button>
+              <h2 className="text-2xl font-bold mb-4 text-center">✨ Choose where to teleport!</h2>
+              <div className="grid grid-cols-6 gap-2 max-h-80 overflow-y-auto">
+                {BOARD_SPACES.map(space => (
+                  <motion.button
+                    key={space.id}
+                    onClick={() => handleTeleport(space.id)}
+                    className="p-3 rounded-lg bg-black/30 hover:bg-white/20 transition-all flex flex-col items-center"
+                    whileHover={{ scale: 1.1 }}
+                  >
+                    <span className="text-2xl">{space.emoji}</span>
+                    <span className="text-xs">{space.name}</span>
+                  </motion.button>
+                ))}
               </div>
-              
-              {myPlayer?.money < pendingBuy.price && (
-                <p className="text-red-400 mt-4">Not enough money!</p>
-              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FREEZE PICKER */}
+      <AnimatePresence>
+        {showFreezePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="glass p-6 rounded-2xl"
+            >
+              <h2 className="text-2xl font-bold mb-4 text-center">❄️ Choose who to freeze!</h2>
+              <div className="flex gap-4 justify-center">
+                {showFreezePicker.map(player => (
+                  <motion.button
+                    key={player.id}
+                    onClick={() => handleFreeze(player.id)}
+                    className="p-4 rounded-xl bg-black/30 hover:bg-cyan-500/30 transition-all flex flex-col items-center"
+                    whileHover={{ scale: 1.1 }}
+                  >
+                    <div 
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold mb-2"
+                      style={{ backgroundColor: player.color || '#3B82F6' }}
+                    >
+                      {player.name?.charAt(0)}
+                    </div>
+                    <span>{player.name}</span>
+                  </motion.button>
+                ))}
+              </div>
             </motion.div>
           </motion.div>
         )}

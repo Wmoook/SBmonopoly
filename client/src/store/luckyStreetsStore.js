@@ -11,35 +11,20 @@ export const useLuckyStreetsStore = create((set, get) => ({
   // Player info
   playerId: null,
   playerName: '',
-  accountBalance: parseFloat(localStorage.getItem('accountBalance')) || 0,
+  accountBalance: parseFloat(localStorage.getItem('accountBalance')) || 100,
   roomCode: null,
   
   // Game state
   gameState: null,
   phase: 'menu', // menu, lobby, playing, ended
   
-  // Matchmaking
-  matchmakingStatus: null,
-  matchmakingTier: null,
-  matchmakingPlayers: 0,
-  
   // UI state
   error: null,
-  lastDice: null,
-  lastSpin: null,
-  isSpinning: false,
-  pendingBuy: null,
-  pendingSwap: false,
-  pendingFreeHouse: false,
-  luckyDrop: null,
   
   // Actions
   connect: () => {
-    // Prevent multiple connections
     const existingSocket = get().socket;
-    if (existingSocket?.connected) {
-      return;
-    }
+    if (existingSocket?.connected) return;
     
     const socket = io(SOCKET_URL, {
       reconnection: true,
@@ -48,37 +33,19 @@ export const useLuckyStreetsStore = create((set, get) => ({
     });
     
     socket.on('connect', () => {
-      console.log('Connected to server:', socket.id);
+      console.log('🎰 Connected:', socket.id);
       set({ socket, connected: true, playerId: socket.id });
     });
     
     socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+      console.log('Disconnected');
       set({ connected: false });
     });
     
     socket.on('error', ({ message }) => {
-      console.log('Server error:', message);
+      console.log('Error:', message);
       set({ error: message });
       setTimeout(() => set({ error: null }), 3000);
-    });
-
-    // Matchmaking
-    socket.on('matchmakingUpdate', ({ playersInQueue }) => {
-      set({ matchmakingPlayers: playersInQueue });
-    });
-    
-    socket.on('matchFound', ({ roomCode, gameState }) => {
-      set({ 
-        roomCode, 
-        gameState, 
-        phase: 'lobby',
-        matchmakingStatus: 'found'
-      });
-    });
-    
-    socket.on('matchmakingCancelled', () => {
-      set({ matchmakingStatus: null, matchmakingTier: null, matchmakingPlayers: 0 });
     });
 
     // Room events
@@ -88,7 +55,7 @@ export const useLuckyStreetsStore = create((set, get) => ({
     
     socket.on('roomJoined', ({ roomCode, player, gameState }) => {
       // Deduct buy-in from account balance
-      const buyIn = gameState.buyIn || 0;
+      const buyIn = gameState?.settings?.buyIn || 0;
       const currentBalance = get().accountBalance;
       if (buyIn > 0 && currentBalance >= buyIn) {
         localStorage.setItem('accountBalance', (currentBalance - buyIn).toString());
@@ -97,11 +64,15 @@ export const useLuckyStreetsStore = create((set, get) => ({
       set({ roomCode, gameState, phase: 'lobby', playerId: player.id });
     });
     
-    socket.on('playerJoined', ({ player, gameState }) => {
+    socket.on('playerJoined', ({ gameState }) => {
       set({ gameState });
     });
     
     socket.on('playerLeft', ({ gameState }) => {
+      set({ gameState });
+    });
+
+    socket.on('playerDisconnected', ({ gameState }) => {
       set({ gameState });
     });
 
@@ -111,211 +82,128 @@ export const useLuckyStreetsStore = create((set, get) => ({
     });
     
     socket.on('turnStart', ({ currentPlayer, gameState }) => {
-      set({ 
-        gameState, 
-        pendingBuy: null, 
-        pendingSwap: false, 
-        pendingFreeHouse: false,
-        isSpinning: false,
-        lastSpin: null
-      });
-    });
-    
-    socket.on('diceRolled', ({ dice, newPosition, passedGo, spin, gameState }) => {
-      set({ 
-        lastDice: dice, 
-        lastSpin: spin,
-        isSpinning: true,
-        gameState 
-      });
-    });
-    
-    socket.on('landingResolved', ({ playerId, result, gameState }) => {
-      set({ gameState, isSpinning: false });
-    });
-    
-    socket.on('buyOption', ({ propertyIndex, price, property }) => {
-      set({ pendingBuy: { propertyIndex, price, property } });
-    });
-    
-    socket.on('swapOption', ({ gameState }) => {
-      set({ pendingSwap: true, gameState });
-    });
-    
-    socket.on('freeHouseOption', ({ gameState }) => {
-      set({ pendingFreeHouse: true, gameState });
-    });
-    
-    socket.on('propertyBought', ({ gameState }) => {
-      set({ gameState, pendingBuy: null });
-    });
-    
-    socket.on('propertiesSwapped', ({ gameState }) => {
-      set({ gameState, pendingSwap: false });
-    });
-    
-    socket.on('freeHouseClaimed', ({ gameState }) => {
-      set({ gameState, pendingFreeHouse: false });
-    });
-    
-    socket.on('houseBuilt', ({ gameState }) => {
-      set({ gameState });
-    });
-
-    // Lucky drops
-    socket.on('luckyDrop', ({ drop, gameState }) => {
-      set({ luckyDrop: drop, gameState });
-    });
-    
-    socket.on('luckyDropAnnounce', ({ playerId, drop }) => {
-      // Could show toast notification
-    });
-    
-    socket.on('luckyDropApplied', ({ gameState }) => {
-      set({ gameState, luckyDrop: null });
-    });
-    
-    socket.on('luckyDropPending', ({ pending }) => {
-      // Handle pending actions (choose property, choose target)
-    });
-
-    // Timer
-    socket.on('timeUpdate', ({ timeRemaining }) => {
-      set(state => ({
-        gameState: state.gameState ? { ...state.gameState, timeRemaining } : null
-      }));
-    });
-
-    // Game end
-    socket.on('playerBankrupt', ({ gameState }) => {
       set({ gameState });
     });
     
-    socket.on('gameOver', ({ winner, reason, gameState }) => {
-      set({ gameState, phase: 'ended' });
+    socket.on('diceRolled', ({ gameState }) => {
+      set({ gameState });
+    });
+    
+    socket.on('landingResult', ({ gameState }) => {
+      set({ gameState });
+    });
+
+    socket.on('wheelResult', ({ gameState }) => {
+      set({ gameState });
+    });
+
+    socket.on('choiceResult', ({ gameState }) => {
+      set({ gameState });
+    });
+
+    socket.on('teleportComplete', ({ gameState }) => {
+      set({ gameState });
+    });
+
+    socket.on('freezeComplete', ({ gameState }) => {
+      set({ gameState });
+    });
+
+    socket.on('playerEliminated', ({ gameState }) => {
+      set({ gameState });
+    });
+    
+    socket.on('gameOver', ({ winner, message }) => {
+      const myId = get().playerId;
+      const didWin = winner?.id === myId;
+      
+      if (didWin && winner.cash > 0) {
+        const currentBalance = get().accountBalance;
+        const newBalance = currentBalance + winner.cash;
+        localStorage.setItem('accountBalance', newBalance.toString());
+        set({ accountBalance: newBalance });
+      }
+      
+      set({ phase: 'ended', winner, winMessage: message });
     });
 
     set({ socket });
   },
 
-  // Account balance
-  setAccountBalance: (amount) => {
-    localStorage.setItem('accountBalance', amount.toString());
-    set({ accountBalance: amount });
-  },
-  
-  deposit: (amount) => {
-    const newBalance = get().accountBalance + amount;
-    localStorage.setItem('accountBalance', newBalance.toString());
-    set({ accountBalance: newBalance });
-  },
-
-  // Matchmaking
-  joinMatchmaking: (buyIn) => {
-    const { socket, accountBalance, setAccountBalance } = get();
-    if (socket && accountBalance >= buyIn) {
-      setAccountBalance(accountBalance - buyIn);
-      socket.emit('joinMatchmaking', { buyIn });
-      set({ matchmakingStatus: 'searching', matchmakingTier: buyIn });
-    }
-  },
-  
-  leaveMatchmaking: () => {
-    const { socket, matchmakingTier, accountBalance, setAccountBalance } = get();
+  disconnect: () => {
+    const socket = get().socket;
     if (socket) {
-      socket.emit('leaveMatchmaking');
-      if (matchmakingTier) {
-        setAccountBalance(accountBalance + matchmakingTier);
-      }
-      set({ matchmakingStatus: null, matchmakingTier: null, matchmakingPlayers: 0 });
+      socket.disconnect();
+      set({ socket: null, connected: false });
     }
   },
 
   // Room actions
-  createRoom: (playerName, buyIn) => {
-    const { socket, accountBalance, setAccountBalance } = get();
-    if (socket && accountBalance >= buyIn) {
-      setAccountBalance(accountBalance - buyIn);
-      set({ playerName });
-      socket.emit('createRoom', { playerName, buyIn });
-    }
+  createRoom: (playerName, buyIn = 10) => {
+    const socket = get().socket;
+    if (!socket) return;
+    
+    set({ playerName });
+    socket.emit('createRoom', { playerName, buyIn });
   },
-  
+
   joinRoom: (roomCode, playerName) => {
-    const { socket } = get();
-    if (socket) {
-      set({ playerName, roomCode });
-      socket.emit('joinRoom', { roomCode, playerName });
-    }
+    const socket = get().socket;
+    if (!socket) return;
+    
+    set({ playerName });
+    socket.emit('joinRoom', { roomCode: roomCode.toUpperCase(), playerName });
   },
-  
+
   startGame: () => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('startGame');
-    }
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('startGame');
   },
 
   // Game actions
   rollDice: () => {
-    const { socket } = get();
-    if (socket) {
-      set({ isSpinning: true });
-      socket.emit('rollDice');
-    }
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('rollDice');
   },
-  
-  buyProperty: () => {
-    const { socket, pendingBuy } = get();
-    if (socket && pendingBuy) {
-      socket.emit('buyProperty', { 
-        propertyIndex: pendingBuy.propertyIndex, 
-        price: pendingBuy.price 
-      });
-    }
+
+  makeChoice: (choiceIndex) => {
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('makeWheelChoice', { choiceIndex });
   },
-  
-  skipBuy: () => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('skipBuy');
-      set({ pendingBuy: null });
-    }
+
+  chooseTeleport: (targetSpace) => {
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('chooseTeleport', { targetSpace });
   },
-  
-  buildHouse: (propertyIndex) => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('buildHouse', { propertyIndex });
-    }
+
+  chooseFreeze: (targetId) => {
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('chooseFreeze', { targetId });
   },
-  
-  claimFreeHouse: (propertyIndex) => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('claimFreeHouse', { propertyIndex });
-    }
-  },
-  
-  swapProperty: (myPropertyIndex, theirPropertyIndex) => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('swapProperty', { myPropertyIndex, theirPropertyIndex });
-    }
-  },
-  
-  applyLuckyDrop: (dropId, targetData = {}) => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('applyLuckyDrop', { dropId, targetData });
-    }
-  },
-  
+
   endTurn: () => {
-    const { socket } = get();
-    if (socket) {
-      socket.emit('endTurn');
-    }
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('endTurn');
+  },
+
+  // Balance management
+  addBalance: (amount) => {
+    const current = get().accountBalance;
+    const newBalance = current + amount;
+    localStorage.setItem('accountBalance', newBalance.toString());
+    set({ accountBalance: newBalance });
   },
 
   // Reset
@@ -324,16 +212,7 @@ export const useLuckyStreetsStore = create((set, get) => ({
       gameState: null,
       phase: 'menu',
       roomCode: null,
-      lastDice: null,
-      lastSpin: null,
-      isSpinning: false,
-      pendingBuy: null,
-      pendingSwap: false,
-      pendingFreeHouse: false,
-      luckyDrop: null,
-      matchmakingStatus: null,
-      matchmakingTier: null,
-      matchmakingPlayers: 0,
+      error: null,
     });
   },
 }));

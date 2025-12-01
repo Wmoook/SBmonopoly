@@ -1,20 +1,85 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// 30 CRAZY WHEEL SEGMENTS!
 const WHEEL_SEGMENTS = [
-  { id: '2x', label: '2X', color: '#22c55e', textColor: '#fff' },
-  { id: 'pay', label: 'PAY', color: '#ef4444', textColor: '#fff' },
-  { id: '1x', label: '1X', color: '#3b82f6', textColor: '#fff' },
-  { id: 'steal', label: 'STEAL', color: '#1f2937', textColor: '#fff' },
-  { id: 'free', label: 'FREE', color: '#eab308', textColor: '#000' },
-  { id: 'swap', label: 'SWAP', color: '#f97316', textColor: '#fff' },
-  { id: '1x', label: '1X', color: '#3b82f6', textColor: '#fff' },
-  { id: '2x', label: '2X', color: '#22c55e', textColor: '#fff' },
+  // MONEY MAKERS (8)
+  { id: 'JACKPOT', label: '🎰', color: '#FFD700' },
+  { id: 'TRIPLE', label: '3X', color: '#00FF00' },
+  { id: 'DOUBLE', label: '2X', color: '#32CD32' },
+  { id: 'PAYDAY', label: '💵', color: '#00CED1' },
+  { id: 'BONUS', label: '🎁', color: '#9370DB' },
+  { id: 'LUCKY7', label: '7️⃣', color: '#FF6347' },
+  { id: 'CASHBACK', label: '💸', color: '#20B2AA' },
+  { id: 'INVESTOR', label: '📈', color: '#4682B4' },
+  
+  // MONEY LOSERS (6)
+  { id: 'TAX', label: '🏛️', color: '#8B0000' },
+  { id: 'BROKE', label: '😭', color: '#B22222' },
+  { id: 'FINE', label: '👮', color: '#DC143C' },
+  { id: 'ROBBED', label: '🦹', color: '#800000' },
+  { id: 'CRASH', label: '📉', color: '#A52A2A' },
+  { id: 'OOPS', label: '🙈', color: '#CD5C5C' },
+  
+  // SKILL-BASED CHOICES (8)
+  { id: 'GAMBLE', label: '🎲', color: '#FF1493' },
+  { id: 'DUEL', label: '⚔️', color: '#FF4500' },
+  { id: 'STEAL', label: '🦝', color: '#8A2BE2' },
+  { id: 'SABOTAGE', label: '💣', color: '#FF6600' },
+  { id: 'INSURANCE', label: '🛡️', color: '#1E90FF' },
+  { id: 'AUCTION', label: '🔨', color: '#DAA520' },
+  { id: 'ALLIN', label: '🃏', color: '#9400D3' },
+  { id: 'SWITCH', label: '🔄', color: '#00BFFF' },
+  
+  // CHAOS EVENTS (8)
+  { id: 'SHUFFLE', label: '🔀', color: '#FF69B4' },
+  { id: 'REVERSE', label: '↩️', color: '#00FA9A' },
+  { id: 'FREERENT', label: '🏠', color: '#98FB98' },
+  { id: 'TELEPORT', label: '✨', color: '#BA55D3' },
+  { id: 'EARTHQUAKE', label: '🌋', color: '#FF8C00' },
+  { id: 'LOTTERY', label: '🎟️', color: '#FFD700' },
+  { id: 'FREEZE', label: '❄️', color: '#ADD8E6' },
+  { id: 'MYSTERY', label: '❓', color: '#9932CC' }
 ];
+
+// Get full outcome data by ID
+const OUTCOME_DETAILS = {
+  'JACKPOT': { label: '🎰 JACKPOT', description: 'WIN 50% OF THE POT!' },
+  'TRIPLE': { label: '3️⃣ TRIPLE', description: 'Triple the rent!' },
+  'DOUBLE': { label: '2️⃣ DOUBLE', description: 'Double the rent!' },
+  'PAYDAY': { label: '💵 PAYDAY', description: 'Get $5 from pot!' },
+  'BONUS': { label: '🎁 BONUS', description: 'Free $3!' },
+  'LUCKY7': { label: '7️⃣ LUCKY 7', description: 'Go to 7, get $7!' },
+  'CASHBACK': { label: '💸 CASHBACK', description: 'Get back last rent!' },
+  'INVESTOR': { label: '📈 INVESTOR', description: 'Properties pay 2X!' },
+  'TAX': { label: '🏛️ TAX', description: 'Pay $3 to pot!' },
+  'BROKE': { label: '😭 BROKE', description: 'Lose half your cash!' },
+  'FINE': { label: '👮 FINE', description: 'Pay $2 fine!' },
+  'ROBBED': { label: '🦹 ROBBED', description: 'Lose $4!' },
+  'CRASH': { label: '📉 CRASH', description: 'Properties worthless!' },
+  'OOPS': { label: '🙈 OOPS', description: 'Pay $1 to everyone!' },
+  'GAMBLE': { label: '🎲 GAMBLE', description: 'Double or nothing!' },
+  'DUEL': { label: '⚔️ DUEL', description: 'Challenge to dice duel!' },
+  'STEAL': { label: '🦝 STEAL', description: '50/50 steal or pay $5!' },
+  'SABOTAGE': { label: '💣 SABOTAGE', description: 'Pay $2 to remove property!' },
+  'INSURANCE': { label: '🛡️ INSURANCE', description: 'Pay $3 for protection!' },
+  'AUCTION': { label: '🔨 AUCTION', description: 'Sell a property!' },
+  'ALLIN': { label: '🃏 ALL IN', description: '33% to triple cash!' },
+  'SWITCH': { label: '🔄 SWITCH', description: 'Swap positions!' },
+  'SHUFFLE': { label: '🔀 SHUFFLE', description: 'Everyone moves random!' },
+  'REVERSE': { label: '↩️ REVERSE', description: 'Turn order reversed!' },
+  'FREERENT': { label: '🏠 FREE RENT', description: 'No rent this turn!' },
+  'TELEPORT': { label: '✨ TELEPORT', description: 'Go anywhere!' },
+  'EARTHQUAKE': { label: '🌋 EARTHQUAKE', description: 'All lose a property!' },
+  'LOTTERY': { label: '🎟️ LOTTERY', description: 'Random player wins $10!' },
+  'FREEZE': { label: '❄️ FREEZE', description: 'Skip someone\'s turn!' },
+  'MYSTERY': { label: '❓ MYSTERY', description: 'Random effect!' }
+};
 
 export default function SpinWheel({ spinning, result, onSpinComplete }) {
   const [rotation, setRotation] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [resultData, setResultData] = useState(null);
 
   useEffect(() => {
     if (spinning && result) {
@@ -22,36 +87,50 @@ export default function SpinWheel({ spinning, result, onSpinComplete }) {
       const targetIndex = WHEEL_SEGMENTS.findIndex(s => s.id === result.id);
       const segmentAngle = 360 / WHEEL_SEGMENTS.length;
       
-      // Spin 5 full rotations + land on target
-      const spins = 5;
+      // Spin 6 full rotations + land on target (more dramatic!)
+      const spins = 6;
       const targetRotation = (spins * 360) + (360 - (targetIndex * segmentAngle) - (segmentAngle / 2));
       
       setRotation(prev => prev + targetRotation);
       setShowResult(false);
       
-      // Show result after spin
+      // Show result after spin animation
       setTimeout(() => {
+        setResultData(result);
         setShowResult(true);
         onSpinComplete?.();
-      }, 3000);
+      }, 3500);
     }
   }, [spinning, result]);
 
   const segmentAngle = 360 / WHEEL_SEGMENTS.length;
+  const details = resultData ? OUTCOME_DETAILS[resultData.id] : null;
 
   return (
     <div className="relative flex flex-col items-center">
       {/* Wheel Container */}
-      <div className="relative w-64 h-64 md:w-80 md:h-80">
-        {/* Glow Effect */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 blur-xl opacity-50 animate-pulse" />
+      <div className="relative w-72 h-72 md:w-96 md:h-96">
+        {/* Epic Glow Effect */}
+        <motion.div 
+          className="absolute inset-0 rounded-full"
+          animate={spinning ? {
+            boxShadow: [
+              '0 0 30px rgba(255,215,0,0.5)',
+              '0 0 80px rgba(255,105,180,0.8)',
+              '0 0 30px rgba(147,112,219,0.5)',
+            ]
+          } : {
+            boxShadow: '0 0 40px rgba(255,215,0,0.3)'
+          }}
+          transition={{ duration: 0.5, repeat: spinning ? Infinity : 0 }}
+        />
         
-        {/* Wheel */}
+        {/* The Wheel */}
         <motion.div
-          className="absolute inset-2 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+          className="absolute inset-2 rounded-full overflow-hidden shadow-2xl border-4 border-white/30"
           style={{ transformOrigin: 'center center' }}
           animate={{ rotate: rotation }}
-          transition={{ duration: 3, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 3.5, ease: [0.2, 0.8, 0.15, 1] }}
         >
           <svg viewBox="0 0 100 100" className="w-full h-full">
             {WHEEL_SEGMENTS.map((segment, i) => {
@@ -68,24 +147,27 @@ export default function SpinWheel({ spinning, result, onSpinComplete }) {
               const y2 = 50 + 50 * Math.sin(endRad);
               
               const largeArc = segmentAngle > 180 ? 1 : 0;
-              
               const pathD = `M 50 50 L ${x1} ${y1} A 50 50 0 ${largeArc} 1 ${x2} ${y2} Z`;
               
               // Text position
               const midAngle = (startAngle + endAngle) / 2;
               const midRad = (midAngle - 90) * (Math.PI / 180);
-              const textX = 50 + 32 * Math.cos(midRad);
-              const textY = 50 + 32 * Math.sin(midRad);
+              const textX = 50 + 35 * Math.cos(midRad);
+              const textY = 50 + 35 * Math.sin(midRad);
               
               return (
                 <g key={i}>
-                  <path d={pathD} fill={segment.color} stroke="#fff" strokeWidth="0.5" />
+                  <path 
+                    d={pathD} 
+                    fill={segment.color} 
+                    stroke="#fff" 
+                    strokeWidth="0.3"
+                    opacity={0.9}
+                  />
                   <text
                     x={textX}
                     y={textY}
-                    fill={segment.textColor}
-                    fontSize="7"
-                    fontWeight="bold"
+                    fontSize="5"
                     textAnchor="middle"
                     dominantBaseline="middle"
                     transform={`rotate(${midAngle}, ${textX}, ${textY})`}
@@ -95,72 +177,59 @@ export default function SpinWheel({ spinning, result, onSpinComplete }) {
                 </g>
               );
             })}
+            
             {/* Center circle */}
-            <circle cx="50" cy="50" r="8" fill="#1a1a2e" stroke="#fff" strokeWidth="1" />
-            <text x="50" y="51" fill="#fff" fontSize="4" textAnchor="middle" dominantBaseline="middle">
+            <circle cx="50" cy="50" r="12" fill="#1a1a2e" stroke="#FFD700" strokeWidth="2" />
+            <text x="50" y="51" fill="#fff" fontSize="8" textAnchor="middle" dominantBaseline="middle">
               🎰
             </text>
           </svg>
         </motion.div>
         
         {/* Pointer */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-10">
-          <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-white drop-shadow-lg" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10">
+          <div className="w-0 h-0 border-l-[15px] border-r-[15px] border-t-[25px] border-l-transparent border-r-transparent border-t-yellow-400 drop-shadow-lg" />
         </div>
         
-        {/* Center Glow when spinning */}
+        {/* Tick marks around edge for drama */}
         {spinning && (
           <motion.div
-            className="absolute inset-0 rounded-full"
+            className="absolute inset-0 rounded-full pointer-events-none"
             animate={{ 
-              boxShadow: [
-                '0 0 20px rgba(255,255,255,0.3)',
-                '0 0 60px rgba(255,255,255,0.6)',
-                '0 0 20px rgba(255,255,255,0.3)',
-              ]
+              opacity: [0.3, 1, 0.3],
             }}
-            transition={{ duration: 0.5, repeat: Infinity }}
+            transition={{ duration: 0.1, repeat: Infinity }}
           />
         )}
       </div>
 
       {/* Result Display */}
       <AnimatePresence>
-        {showResult && result && (
+        {showResult && resultData && details && (
           <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            initial={{ scale: 0, opacity: 0, y: -50 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0 }}
             className="absolute inset-0 flex items-center justify-center"
           >
             <motion.div
-              className="px-8 py-4 rounded-2xl text-3xl font-black shadow-2xl"
-              style={{ backgroundColor: result.color }}
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 0.3, repeat: 2 }}
+              className="px-10 py-6 rounded-3xl text-center backdrop-blur-xl shadow-2xl border-2 border-white/30"
+              style={{ 
+                backgroundColor: `${WHEEL_SEGMENTS.find(s => s.id === resultData.id)?.color}ee`
+              }}
+              animate={{ 
+                scale: [1, 1.15, 1],
+                rotate: [0, -3, 3, 0]
+              }}
+              transition={{ duration: 0.4, repeat: 2 }}
             >
-              {result.label}!
+              <div className="text-5xl mb-2">{WHEEL_SEGMENTS.find(s => s.id === resultData.id)?.label}</div>
+              <div className="text-2xl font-black text-white drop-shadow-lg">{details.label}</div>
+              <div className="text-sm text-white/80 mt-1">{details.description}</div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Labels */}
-      <div className="mt-4 flex gap-2 flex-wrap justify-center max-w-xs">
-        {[
-          { label: '2X', color: '#22c55e', desc: 'Double!' },
-          { label: '1X', color: '#3b82f6', desc: 'Normal' },
-          { label: 'FREE', color: '#eab308', desc: 'No cost!' },
-          { label: 'SWAP', color: '#f97316', desc: 'Trade!' },
-          { label: 'PAY', color: '#ef4444', desc: '-10%' },
-          { label: 'STEAL', color: '#1f2937', desc: '+$2 each' },
-        ].map(item => (
-          <div key={item.label} className="flex items-center gap-1 text-xs">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }} />
-            <span className="text-gray-400">{item.desc}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

@@ -20,534 +20,426 @@ const io = new Server(httpServer, {
   }
 });
 
-// Store active games
-const games = new Map();
-const playerToGame = new Map();
+// Game engine instance
+const engine = new LuckyStreetsEngine();
 
-// Matchmaking queues
-const matchmakingQueues = new Map();
-const playerToQueue = new Map();
+// Track socket to room
+const playerRooms = new Map();
 
-const ANON_NAMES = ['Lucky', 'Star', 'Ace', 'Flash'];
+// Turn timers
+const turnTimers = new Map();
 
-function generateRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
+// 10 SECOND TURN TIMER
+const TURN_TIME = 10;
 
-// Check matchmaking queue
-function checkMatchmakingQueue(buyIn) {
-  const queue = matchmakingQueues.get(buyIn);
-  if (!queue || queue.length < 2) return;
+function startTurnTimer(roomCode, playerId) {
+  // Clear any existing timer
+  clearTurnTimer(roomCode);
   
-  if (queue.length >= 4) {
-    startMatchmakingGame(buyIn, 4);
-  } else if (queue.length >= 2) {
-    const oldestPlayer = queue[0];
-    const waitTime = Date.now() - oldestPlayer.timestamp;
+  const room = engine.getRoom(roomCode);
+  if (!room || room.state !== 'playing') return;
+  
+  let timeLeft = TURN_TIME;
+  
+  // Broadcast initial time
+  io.to(roomCode).emit('turnTimerUpdate', { timeLeft });
+  
+  const interval = setInterval(() => {
+    timeLeft--;
+    io.to(roomCode).emit('turnTimerUpdate', { timeLeft });
     
-    if (waitTime >= 10000) {
-      startMatchmakingGame(buyIn, queue.length);
-    } else {
-      setTimeout(() => checkMatchmakingQueue(buyIn), 10000 - waitTime + 100);
-    }
-  }
-}
-
-function startMatchmakingGame(buyIn, playerCount) {
-  const queue = matchmakingQueues.get(buyIn);
-  if (!queue || queue.length < playerCount) return;
-  
-  const players = queue.splice(0, playerCount);
-  const roomCode = generateRoomCode();
-  const game = new LuckyStreetsEngine(roomCode, buyIn);
-  
-  games.set(roomCode, game);
-  
-  players.forEach((p, index) => {
-    const socket = io.sockets.sockets.get(p.socketId);
-    if (socket) {
-      game.addPlayer(p.socketId, ANON_NAMES[index]);
-      playerToGame.set(p.socketId, roomCode);
-      playerToQueue.delete(p.socketId);
-      socket.join(roomCode);
-    }
-  });
-  
-  // Notify all players
-  players.forEach((p) => {
-    const socket = io.sockets.sockets.get(p.socketId);
-    if (socket) {
-      socket.emit('matchFound', { 
-        roomCode, 
-        gameState: game.getState()
-      });
-    }
-  });
-  
-  // Auto-start after brief delay
-  setTimeout(() => {
-    if (game && !game.hasStarted && game.players.length >= 2) {
-      game.startGame();
-      io.to(roomCode).emit('gameStarted', { gameState: game.getState() });
-      io.to(roomCode).emit('turnStart', { 
-        currentPlayer: game.getCurrentPlayer(),
-        gameState: game.getState()
-      });
+    if (timeLeft <= 0) {
+      clearInterval(interval);
+      turnTimers.delete(roomCode);
       
-      // Start game timer
-      startGameTimer(roomCode, game);
-      
-      console.log(`Lucky Streets game ${roomCode} started with ${game.players.length} players ($${buyIn} buy-in)`);
-    }
-  }, 3000);
-}
-
-function startGameTimer(roomCode, game) {
-  const timerInterval = setInterval(() => {
-    if (!games.has(roomCode)) {
-      clearInterval(timerInterval);
-      return;
-    }
-    
-    game.updateTime();
-    
-    // Check for lucky drops
-    const drop = game.checkLuckyDrop();
-    if (drop) {
-      io.to(drop.playerId).emit('luckyDrop', {
-        drop: drop.drop,
-        gameState: game.getState()
-      });
-      io.to(roomCode).emit('luckyDropAnnounce', {
-        playerId: drop.playerId,
-        drop: drop.drop
-      });
-    }
-    
-    // Broadcast time update
-    io.to(roomCode).emit('timeUpdate', { 
-      timeRemaining: game.timeRemaining 
-    });
-    
-    // Check game end
-    const endCheck = game.checkGameEnd();
-    if (endCheck.ended) {
-      clearInterval(timerInterval);
-      game.phase = 'ended';
-      io.to(roomCode).emit('gameOver', {
-        winner: endCheck.winner,
-        reason: endCheck.reason,
-        gameState: game.getState()
-      });
+      // TIMEOUT! Apply penalty and skip turn
+      const result = engine.handleTurnTimeout(roomCode);
+      if (result) {
+        io.to(roomCode).emit('turnTimeout', {
+          player: result.player,
+          penalty: result.penalty,
+          message: `⏰ ${result.player} took too long! -$${result.penalty}!`
+        });
+        
+        if (result.room.state === 'finished') {
+          io.to(roomCode).emit('gameOver', {
+            winner: result.room.winner,
+            pot: result.room.pot,
+            message: `🏆 ${result.room.winner.name} wins!`
+          });
+        } else {
+          io.to(roomCode).emit('turnStart', {
+            currentPlayer: result.nextPlayer,
+            gameState: engine.getGameState(roomCode)
+          });
+          startTurnTimer(roomCode, result.nextPlayer.id);
+        }
+      }
     }
   }, 1000);
+  
+  turnTimers.set(roomCode, interval);
+}
+
+function clearTurnTimer(roomCode) {
+  const timer = turnTimers.get(roomCode);
+  if (timer) {
+    clearInterval(timer);
+    turnTimers.delete(roomCode);
+  }
 }
 
 io.on('connection', (socket) => {
-  console.log(`Player connected: ${socket.id}`);
+  console.log(`🎰 Player connected: ${socket.id}`);
 
-  // Join matchmaking
-  socket.on('joinMatchmaking', ({ buyIn }) => {
-    const existingTier = playerToQueue.get(socket.id);
-    if (existingTier !== undefined) {
-      const existingQueue = matchmakingQueues.get(existingTier);
-      if (existingQueue) {
-        const idx = existingQueue.findIndex(p => p.socketId === socket.id);
-        if (idx !== -1) existingQueue.splice(idx, 1);
-      }
-    }
-    
-    if (!matchmakingQueues.has(buyIn)) {
-      matchmakingQueues.set(buyIn, []);
-    }
-    
-    const queue = matchmakingQueues.get(buyIn);
-    queue.push({ socketId: socket.id, timestamp: Date.now() });
-    playerToQueue.set(socket.id, buyIn);
-    
-    socket.emit('matchmakingUpdate', { playersInQueue: queue.length });
-    
-    queue.forEach(p => {
-      if (p.socketId !== socket.id) {
-        const otherSocket = io.sockets.sockets.get(p.socketId);
-        if (otherSocket) {
-          otherSocket.emit('matchmakingUpdate', { playersInQueue: queue.length });
-        }
-      }
-    });
-    
-    checkMatchmakingQueue(buyIn);
-  });
-
-  // Leave matchmaking
-  socket.on('leaveMatchmaking', () => {
-    const tier = playerToQueue.get(socket.id);
-    if (tier !== undefined) {
-      const queue = matchmakingQueues.get(tier);
-      if (queue) {
-        const idx = queue.findIndex(p => p.socketId === socket.id);
-        if (idx !== -1) queue.splice(idx, 1);
-      }
-      playerToQueue.delete(socket.id);
-      socket.emit('matchmakingCancelled');
-    }
-  });
-
-  // Create private room
+  // CREATE ROOM
   socket.on('createRoom', ({ playerName, buyIn }) => {
-    const roomCode = generateRoomCode();
-    const game = new LuckyStreetsEngine(roomCode, buyIn);
-    const player = game.addPlayer(socket.id, playerName);
+    const room = engine.createRoom(socket.id, playerName, { buyIn: buyIn || 10 });
     
-    games.set(roomCode, game);
-    playerToGame.set(socket.id, roomCode);
+    playerRooms.set(socket.id, room.code);
+    socket.join(room.code);
     
-    socket.join(roomCode);
-    socket.emit('roomCreated', { roomCode, player, gameState: game.getState() });
-  });
-
-  // Join room
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
-    const normalizedCode = roomCode.toUpperCase().trim();
-    const game = games.get(normalizedCode);
-    
-    if (!game) {
-      socket.emit('error', { message: 'Room not found' });
-      return;
-    }
-    
-    if (game.hasStarted) {
-      socket.emit('error', { message: 'Game already started' });
-      return;
-    }
-    
-    if (game.players.length >= 4) {
-      socket.emit('error', { message: 'Room is full' });
-      return;
-    }
-    
-    // Check if player already in game (prevent duplicates)
-    const existingPlayer = game.players.find(p => p.id === socket.id);
-    if (existingPlayer) {
-      socket.emit('error', { message: 'Already in this room' });
-      return;
-    }
-    
-    const player = game.addPlayer(socket.id, playerName);
-    playerToGame.set(socket.id, normalizedCode);
-    
-    socket.join(normalizedCode);
-    
-    // Send roomJoined to the joining player
-    socket.emit('roomJoined', { roomCode: normalizedCode, player, gameState: game.getState() });
-    
-    // Notify others in the room
-    socket.to(normalizedCode).emit('playerJoined', { player, gameState: game.getState() });
-    
-    console.log(`${playerName} joined room ${normalizedCode}`);
-  });
-
-  // Start game
-  socket.on('startGame', () => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    if (game.players.length < 2) {
-      socket.emit('error', { message: 'Need at least 2 players' });
-      return;
-    }
-
-    game.startGame();
-    io.to(roomCode).emit('gameStarted', { gameState: game.getState() });
-    io.to(roomCode).emit('turnStart', { 
-      currentPlayer: game.getCurrentPlayer(),
-      gameState: game.getState()
+    socket.emit('roomCreated', { 
+      roomCode: room.code, 
+      player: room.players[0],
+      gameState: engine.getGameState(room.code)
     });
     
-    startGameTimer(roomCode, game);
+    console.log(`📍 Room ${room.code} created by ${playerName}`);
   });
 
-  // Roll dice - this triggers the spin!
-  socket.on('rollDice', () => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
+  // JOIN ROOM
+  socket.on('joinRoom', ({ roomCode, playerName }) => {
+    const result = engine.joinRoom(roomCode, socket.id, playerName);
     
-    if (!game) return;
-    
-    const result = game.rollDice(socket.id);
-    
-    if (result.error) {
+    if (!result.success) {
       socket.emit('error', { message: result.error });
       return;
     }
     
-    // Broadcast dice roll and spin result
+    playerRooms.set(socket.id, roomCode.toUpperCase());
+    socket.join(roomCode.toUpperCase());
+    
+    const gameState = engine.getGameState(roomCode);
+    const player = result.room.players.find(p => p.id === socket.id);
+    
+    // Send to joining player
+    socket.emit('roomJoined', { 
+      roomCode: roomCode.toUpperCase(), 
+      player,
+      gameState
+    });
+    
+    // Notify others
+    socket.to(roomCode.toUpperCase()).emit('playerJoined', { 
+      player,
+      gameState
+    });
+    
+    console.log(`👤 ${playerName} joined room ${roomCode.toUpperCase()}`);
+  });
+
+  // START GAME
+  socket.on('startGame', () => {
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
+    
+    const result = engine.startGame(roomCode, socket.id);
+    
+    if (!result.success) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+    
+    io.to(roomCode).emit('gameStarted', { 
+      gameState: engine.getGameState(roomCode)
+    });
+    
+    io.to(roomCode).emit('turnStart', {
+      currentPlayer: result.firstPlayer,
+      gameState: engine.getGameState(roomCode)
+    });
+    
+    // Start 10-second turn timer!
+    startTurnTimer(roomCode, result.firstPlayer.id);
+    
+    console.log(`🎮 Game started in room ${roomCode}`);
+  });
+
+  // ROLL DICE (player hit the button in time!)
+  socket.on('rollDice', () => {
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
+    
+    // Stop turn timer - they made it in time!
+    clearTurnTimer(roomCode);
+    
+    const result = engine.rollDice(roomCode, socket.id);
+    
+    if (!result.success) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+    
     io.to(roomCode).emit('diceRolled', {
       playerId: socket.id,
       dice: result.dice,
+      total: result.total,
       newPosition: result.newPosition,
       passedGo: result.passedGo,
-      spin: result.spin,
-      gameState: game.getState()
+      space: result.space,
+      gameState: engine.getGameState(roomCode)
     });
     
-    // Handle landing after spin animation
+    // Wait for movement animation, then handle landing
     setTimeout(() => {
-      const landingResult = game.handleLanding(socket.id, result.spin);
+      const landingResult = engine.handleLanding(roomCode, socket.id);
       
-      io.to(roomCode).emit('landingResolved', {
+      if (landingResult.success) {
+        // Emit landing result
+        io.to(roomCode).emit('landingResult', {
+          playerId: socket.id,
+          space: landingResult.space,
+          message: landingResult.message,
+          actions: landingResult.actions,
+          gameState: engine.getGameState(roomCode)
+        });
+        
+        // If it's a spin zone, trigger the wheel
+        if (landingResult.space.type === 'spin') {
+          io.to(roomCode).emit('triggerSpin', {
+            playerId: socket.id,
+            wheelOutcome: landingResult.wheelOutcome,
+            needsChoice: landingResult.needsChoice,
+            choices: landingResult.choices
+          });
+          
+          // Wait for spin animation
+          setTimeout(() => {
+            if (landingResult.needsChoice) {
+              // Wait for player choice
+              socket.emit('makeChoice', {
+                outcome: landingResult.wheelOutcome,
+                choices: landingResult.choices
+              });
+            } else {
+              // Process non-choice outcome
+              processWheelOutcome(roomCode, socket.id, landingResult.wheelOutcome);
+            }
+          }, 3500);
+        } else {
+          // Not a spin zone - just end turn after a bit
+          setTimeout(() => {
+            endTurn(roomCode);
+          }, 2000);
+        }
+      }
+    }, 1500);
+  });
+
+  // PLAYER MAKES A SKILL-BASED CHOICE
+  socket.on('makeWheelChoice', ({ choiceIndex }) => {
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
+    
+    const room = engine.getRoom(roomCode);
+    const player = room?.players.find(p => p.id === socket.id);
+    
+    if (!player?.pendingChoice) {
+      socket.emit('error', { message: 'No pending choice' });
+      return;
+    }
+    
+    const result = engine.handleWheelChoice(roomCode, socket.id, choiceIndex);
+    
+    if (result.success) {
+      io.to(roomCode).emit('choiceResult', {
         playerId: socket.id,
-        result: landingResult,
-        gameState: game.getState()
+        message: result.message,
+        value: result.value,
+        gameState: engine.getGameState(roomCode)
       });
       
-      // If player can buy, wait for their decision
-      if (landingResult.canBuy) {
-        socket.emit('buyOption', {
-          propertyIndex: game.players.find(p => p.id === socket.id)?.position,
-          price: landingResult.buyPrice,
-          property: game.board[game.players.find(p => p.id === socket.id)?.position]
-        });
-      } else if (landingResult.canSwap) {
-        socket.emit('swapOption', {
-          gameState: game.getState()
-        });
-      } else if (landingResult.pendingFreeHouse) {
-        socket.emit('freeHouseOption', {
-          gameState: game.getState()
-        });
+      if (result.eliminated) {
+        handleElimination(roomCode, socket.id);
       } else {
-        // Auto end turn
-        setTimeout(() => endTurn(roomCode, game), 1500);
+        setTimeout(() => endTurn(roomCode), 2000);
       }
+    }
+  });
+
+  // TELEPORT CHOICE
+  socket.on('chooseTeleport', ({ targetSpace }) => {
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
+    
+    const result = engine.handleTeleport(roomCode, socket.id, targetSpace);
+    
+    if (result.success) {
+      io.to(roomCode).emit('teleportComplete', {
+        playerId: socket.id,
+        message: result.message,
+        gameState: engine.getGameState(roomCode)
+      });
       
-      // Check for bankruptcy
-      const player = game.players.find(p => p.id === socket.id);
-      if (player?.bankrupt) {
-        io.to(roomCode).emit('playerBankrupt', {
-          playerId: socket.id,
-          gameState: game.getState()
-        });
-        
-        const endCheck = game.checkGameEnd();
-        if (endCheck.ended) {
-          game.phase = 'ended';
-          io.to(roomCode).emit('gameOver', {
-            winner: endCheck.winner,
-            reason: endCheck.reason,
-            gameState: game.getState()
-          });
-        }
-      }
-    }, 3500); // Wait for spin animation
-  });
-
-  // Buy property
-  socket.on('buyProperty', ({ propertyIndex, price }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.buyProperty(socket.id, propertyIndex, price);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
+      setTimeout(() => endTurn(roomCode), 1500);
     }
-    
-    io.to(roomCode).emit('propertyBought', {
-      playerId: socket.id,
-      propertyIndex,
-      gameState: game.getState()
-    });
-    
-    setTimeout(() => endTurn(roomCode, game), 1000);
   });
 
-  // Skip buying
-  socket.on('skipBuy', () => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
+  // FREEZE CHOICE
+  socket.on('chooseFreeze', ({ targetId }) => {
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
     
-    if (!game) return;
+    const result = engine.handleFreeze(roomCode, socket.id, targetId);
     
-    endTurn(roomCode, game);
-  });
-
-  // Build house
-  socket.on('buildHouse', ({ propertyIndex }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.buildHouse(socket.id, propertyIndex);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
+    if (result.success) {
+      io.to(roomCode).emit('freezeComplete', {
+        playerId: socket.id,
+        message: result.message,
+        gameState: engine.getGameState(roomCode)
+      });
+      
+      setTimeout(() => endTurn(roomCode), 1500);
     }
-    
-    io.to(roomCode).emit('houseBuilt', {
-      playerId: socket.id,
-      propertyIndex,
-      houses: result.houses,
-      gameState: game.getState()
-    });
   });
 
-  // Free house from streak
-  socket.on('claimFreeHouse', ({ propertyIndex }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.addFreeHouse(socket.id, propertyIndex);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
-    }
-    
-    io.to(roomCode).emit('freeHouseClaimed', {
-      playerId: socket.id,
-      propertyIndex,
-      gameState: game.getState()
-    });
-    
-    setTimeout(() => endTurn(roomCode, game), 1000);
-  });
-
-  // Swap property (from SWAP spin)
-  socket.on('swapProperty', ({ myPropertyIndex, theirPropertyIndex }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.swapProperty(socket.id, myPropertyIndex, theirPropertyIndex);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
-    }
-    
-    io.to(roomCode).emit('propertiesSwapped', {
-      playerId: socket.id,
-      myPropertyIndex,
-      theirPropertyIndex,
-      gameState: game.getState()
-    });
-    
-    setTimeout(() => endTurn(roomCode, game), 1000);
-  });
-
-  // Apply lucky drop
-  socket.on('applyLuckyDrop', ({ dropId, targetData }) => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
-    
-    if (!game) return;
-    
-    const result = game.applyLuckyDrop(socket.id, dropId, targetData);
-    
-    if (result.error) {
-      socket.emit('error', { message: result.error });
-      return;
-    }
-    
-    if (result.pending) {
-      socket.emit('luckyDropPending', { pending: result.pending });
-      return;
-    }
-    
-    io.to(roomCode).emit('luckyDropApplied', {
-      playerId: socket.id,
-      dropId,
-      effect: result.effect,
-      gameState: game.getState()
-    });
-    
-    game.pendingLuckyDrop = null;
-  });
-
-  // End turn manually
+  // END TURN
   socket.on('endTurn', () => {
-    const roomCode = playerToGame.get(socket.id);
-    const game = games.get(roomCode);
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
     
-    if (!game) return;
+    const result = engine.endTurn(roomCode, socket.id);
     
-    if (game.getCurrentPlayer()?.id !== socket.id) {
-      socket.emit('error', { message: 'Not your turn' });
+    if (!result.success) {
+      socket.emit('error', { message: result.error });
       return;
     }
     
-    endTurn(roomCode, game);
+    if (result.gameOver) {
+      clearTurnTimer(roomCode);
+      io.to(roomCode).emit('gameOver', {
+        winner: result.winner,
+        message: `🏆 ${result.winner.name} wins with $${result.winner.cash}!`
+      });
+    } else {
+      io.to(roomCode).emit('turnStart', {
+        currentPlayer: result.nextPlayer,
+        gameState: engine.getGameState(roomCode)
+      });
+      
+      // Start next player's timer
+      startTurnTimer(roomCode, result.nextPlayer.id);
+    }
   });
 
-  // Disconnect
+  // DISCONNECT
   socket.on('disconnect', () => {
-    const tier = playerToQueue.get(socket.id);
-    if (tier !== undefined) {
-      const queue = matchmakingQueues.get(tier);
-      if (queue) {
-        const idx = queue.findIndex(p => p.socketId === socket.id);
-        if (idx !== -1) queue.splice(idx, 1);
-      }
-      playerToQueue.delete(socket.id);
-    }
-    
-    const roomCode = playerToGame.get(socket.id);
+    const roomCode = playerRooms.get(socket.id);
     if (roomCode) {
-      const game = games.get(roomCode);
-      if (game) {
-        game.removePlayer(socket.id);
-        playerToGame.delete(socket.id);
-        
-        io.to(roomCode).emit('playerLeft', {
-          playerId: socket.id,
-          gameState: game.getState()
-        });
-        
-        const endCheck = game.checkGameEnd();
-        if (endCheck.ended) {
-          game.phase = 'ended';
-          io.to(roomCode).emit('gameOver', {
-            winner: endCheck.winner,
-            reason: endCheck.reason,
-            gameState: game.getState()
+      const room = engine.getRoom(roomCode);
+      if (room) {
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+          player.connected = false;
+          
+          io.to(roomCode).emit('playerDisconnected', {
+            playerId: socket.id,
+            playerName: player.name,
+            gameState: engine.getGameState(roomCode)
           });
-        }
-        
-        if (game.players.filter(p => !p.bankrupt).length === 0) {
-          games.delete(roomCode);
+          
+          // If it was their turn, skip it
+          if (room.state === 'playing' && room.players[room.currentPlayerIndex]?.id === socket.id) {
+            endTurn(roomCode);
+          }
         }
       }
+      playerRooms.delete(socket.id);
     }
     
-    console.log(`Player disconnected: ${socket.id}`);
+    console.log(`👋 Player disconnected: ${socket.id}`);
   });
 });
 
-function endTurn(roomCode, game) {
-  game.nextTurn();
-  const currentPlayer = game.getCurrentPlayer();
+// Helper: Process wheel outcome
+function processWheelOutcome(roomCode, playerId, outcome) {
+  const result = engine.processWheelOutcome(roomCode, playerId, outcome);
   
-  if (currentPlayer) {
-    io.to(roomCode).emit('turnStart', {
-      currentPlayer,
-      gameState: game.getState()
+  if (result.success) {
+    io.to(roomCode).emit('wheelResult', {
+      playerId,
+      outcome,
+      message: result.message,
+      value: result.value,
+      gameState: engine.getGameState(roomCode)
     });
+    
+    if (result.needsTeleport) {
+      io.to(playerId).emit('chooseTeleportSpace', {
+        spaces: LuckyStreetsEngine.BOARD_SPACES
+      });
+    } else if (result.needsFreeze) {
+      const room = engine.getRoom(roomCode);
+      const others = room.players.filter(p => p.id !== playerId);
+      io.to(playerId).emit('chooseFreezeTarget', { players: others });
+    } else if (result.eliminated) {
+      handleElimination(roomCode, playerId);
+    } else {
+      setTimeout(() => endTurn(roomCode), 2000);
+    }
+  }
+}
+
+// Helper: Handle elimination
+function handleElimination(roomCode, playerId) {
+  const room = engine.getRoom(roomCode);
+  const player = room?.players.find(p => p.id === playerId);
+  
+  if (player) {
+    io.to(roomCode).emit('playerEliminated', {
+      playerId,
+      playerName: player.name,
+      message: `💀 ${player.name} is BROKE and eliminated!`
+    });
+    
+    // Check for game over
+    if (room.state === 'finished') {
+      clearTurnTimer(roomCode);
+      io.to(roomCode).emit('gameOver', {
+        winner: room.winner,
+        message: `🏆 ${room.winner.name} wins with $${room.winner.cash}!`
+      });
+    } else {
+      setTimeout(() => endTurn(roomCode), 2000);
+    }
+  }
+}
+
+// Helper: End turn
+function endTurn(roomCode) {
+  clearTurnTimer(roomCode);
+  
+  const room = engine.getRoom(roomCode);
+  if (!room || room.state !== 'playing') return;
+  
+  const currentPlayer = room.players[room.currentPlayerIndex];
+  const result = engine.endTurn(roomCode, currentPlayer.id);
+  
+  if (!result.success) return;
+  
+  if (result.gameOver) {
+    io.to(roomCode).emit('gameOver', {
+      winner: result.winner,
+      message: `🏆 ${result.winner.name} wins with $${result.winner.cash}!`
+    });
+  } else {
+    io.to(roomCode).emit('turnStart', {
+      currentPlayer: result.nextPlayer,
+      gameState: engine.getGameState(roomCode)
+    });
+    
+    startTurnTimer(roomCode, result.nextPlayer.id);
   }
 }
 
@@ -558,5 +450,6 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
-  console.log(`🎰 Lucky Streets server running on port ${PORT}`);
+  console.log(`🎰 LUCKY STREETS server running on port ${PORT}`);
+  console.log(`⏱️ Turn timer: ${TURN_TIME} seconds`);
 });
