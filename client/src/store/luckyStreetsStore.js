@@ -109,6 +109,10 @@ export const useLuckyStreetsStore = create((set, get) => ({
       set({ gameState });
     });
 
+    socket.on('miniGameComplete', ({ gameState }) => {
+      set({ gameState });
+    });
+
     socket.on('playerEliminated', ({ gameState }) => {
       set({ gameState });
     });
@@ -189,6 +193,13 @@ export const useLuckyStreetsStore = create((set, get) => ({
     if (!socket) return;
     
     socket.emit('chooseFreeze', { targetId });
+  },
+
+  miniGameResult: (won, stakes) => {
+    const socket = get().socket;
+    if (!socket) return;
+    
+    socket.emit('miniGameResult', { won, stakes });
   },
 
   endTurn: () => {

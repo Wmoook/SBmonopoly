@@ -2,6 +2,26 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLuckyStreetsStore } from '../store/luckyStreetsStore';
 import SpinWheel from './SpinWheel';
+import { 
+  PongGame, 
+  DodgeGame, 
+  ReactionGame, 
+  MemoryGame, 
+  ClickerGame, 
+  SnakeGame, 
+  HigherLowerGame 
+} from './MiniGames';
+
+// Mini-game component mapping
+const MINI_GAME_COMPONENTS = {
+  'PONG': PongGame,
+  'DODGE': DodgeGame,
+  'REACTION': ReactionGame,
+  'MEMORY': MemoryGame,
+  'CLICKER': ClickerGame,
+  'SNAKE': SnakeGame,
+  'HIGHLOW': HigherLowerGame,
+};
 
 // 30 SPACE BOARD - BIGGER AND COOLER!
 const BOARD_SPACES = [
@@ -91,6 +111,7 @@ export default function LuckyStreetsGame() {
     makeChoice,
     chooseTeleport,
     chooseFreeze,
+    miniGameResult,
   } = useLuckyStreetsStore();
 
   const [showWheel, setShowWheel] = useState(false);
@@ -100,11 +121,22 @@ export default function LuckyStreetsGame() {
   const [pendingChoice, setPendingChoice] = useState(null);
   const [showTeleportPicker, setShowTeleportPicker] = useState(false);
   const [showFreezePicker, setShowFreezePicker] = useState(false);
+  
+  // MINI-GAME STATE
+  const [activeMiniGame, setActiveMiniGame] = useState(null);
+  const [miniGameStakes, setMiniGameStakes] = useState(0);
 
   // Listen for wheel trigger
   useEffect(() => {
     const socket = useLuckyStreetsStore.getState().socket;
     if (!socket) return;
+
+    // Listen for mini-game trigger
+    socket.on('startMiniGame', ({ gameType, stakes }) => {
+      setActiveMiniGame(gameType);
+      setMiniGameStakes(stakes);
+      setShowWheel(false);
+    });
 
     socket.on('triggerSpin', ({ wheelOutcome }) => {
       setCurrentSpin(wheelOutcome);
@@ -160,8 +192,17 @@ export default function LuckyStreetsGame() {
       socket.off('chooseFreezeTarget');
       socket.off('landingResult');
       socket.off('turnTimeout');
+      socket.off('startMiniGame');
     };
   }, []);
+
+  // Handle mini-game completion
+  const handleMiniGameComplete = (won) => {
+    setActiveMiniGame(null);
+    miniGameResult(won, miniGameStakes);
+    setLastMessage(won ? `🎉 You won $${miniGameStakes}!` : `😢 You lost $${miniGameStakes}!`);
+    setTimeout(() => setLastMessage(null), 3000);
+  };
 
   if (!gameState) return null;
 
@@ -498,19 +539,22 @@ export default function LuckyStreetsGame() {
 
           {/* Wheel Legend */}
           <div className="glass p-4 rounded-xl">
-            <h3 className="font-bold mb-2 text-gray-400 text-sm">WHEEL OUTCOMES</h3>
-            <div className="grid grid-cols-3 gap-1 text-lg">
+            <h3 className="font-bold mb-2 text-gray-400 text-sm">WHEEL = MINI-GAMES!</h3>
+            <div className="grid grid-cols-4 gap-1 text-base">
+              <div title="Pong">🏓</div>
+              <div title="Dodge">🔥</div>
+              <div title="Reaction">⚡</div>
+              <div title="Memory">🧠</div>
+              <div title="Clicker">👆</div>
+              <div title="Snake">🐍</div>
+              <div title="Hi-Lo">📊</div>
               <div title="Jackpot">🎰</div>
-              <div title="Triple">3️⃣</div>
-              <div title="Double">2️⃣</div>
               <div title="Gamble">🎲</div>
-              <div title="Duel">⚔️</div>
               <div title="Steal">🦝</div>
               <div title="Freeze">❄️</div>
-              <div title="Teleport">✨</div>
               <div title="Mystery">❓</div>
             </div>
-            <p className="text-[10px] text-gray-500 mt-2">Land on 🎡 to spin!</p>
+            <p className="text-[10px] text-gray-500 mt-2">🎡 = SKILL GAMES FOR $!</p>
           </div>
         </div>
       </div>
@@ -597,6 +641,77 @@ export default function LuckyStreetsGame() {
                   </motion.button>
                 ))}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MINI-GAME MODAL */}
+      <AnimatePresence>
+        {activeMiniGame && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, rotateX: -30 }}
+              animate={{ scale: 1, rotateX: 0 }}
+              exit={{ scale: 0.8, rotateX: 30 }}
+              className="relative"
+            >
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-center">
+                <div className="text-2xl font-bold text-yellow-400">
+                  🎮 MINI-GAME: {activeMiniGame.toUpperCase()}
+                </div>
+                <div className="text-lg text-green-400">
+                  Playing for ${miniGameStakes}!
+                </div>
+              </div>
+              
+              {activeMiniGame === 'PONG' && (
+                <PongGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
+              {activeMiniGame === 'DODGE' && (
+                <DodgeGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
+              {activeMiniGame === 'REACTION' && (
+                <ReactionGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
+              {activeMiniGame === 'MEMORY' && (
+                <MemoryGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
+              {activeMiniGame === 'CLICKER' && (
+                <ClickerGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
+              {activeMiniGame === 'SNAKE' && (
+                <SnakeGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
+              {activeMiniGame === 'HIGHLOW' && (
+                <HigherLowerGame 
+                  stakes={miniGameStakes} 
+                  onComplete={handleMiniGameComplete} 
+                />
+              )}
             </motion.div>
           </motion.div>
         )}

@@ -1,49 +1,51 @@
-// LuckyStreetsEngine.js - 30 CRAZY WHEEL OUTCOMES + 10-SECOND TURN TIMER
+// LuckyStreetsEngine.js - 30 WHEEL OUTCOMES WITH MINI-GAMES!
 
 class LuckyStreetsEngine {
   constructor() {
     this.rooms = new Map();
   }
 
-  // 30 CRAZY WHEEL OUTCOMES - Some with skill-based choices!
+  // 30 WHEEL OUTCOMES - NOW WITH MINI-GAMES!
   static WHEEL_OUTCOMES = [
-    // MONEY MAKERS (8)
-    { id: 'JACKPOT', label: '🎰 JACKPOT', color: '#FFD700', description: 'WIN 50% OF THE POT!', type: 'instant' },
-    { id: 'TRIPLE', label: '3️⃣ TRIPLE', color: '#00FF00', description: 'Triple the rent you pay/receive!', type: 'multiplier', value: 3 },
-    { id: 'DOUBLE', label: '2️⃣ DOUBLE', color: '#32CD32', description: 'Double the rent!', type: 'multiplier', value: 2 },
-    { id: 'PAYDAY', label: '💵 PAYDAY', color: '#00CED1', description: 'Collect $5 from the pot!', type: 'instant', value: 5 },
-    { id: 'BONUS', label: '🎁 BONUS', color: '#9370DB', description: 'Get $3 free!', type: 'instant', value: 3 },
-    { id: 'LUCKY7', label: '7️⃣ LUCKY 7', color: '#FF6347', description: 'Move to space 7 and collect $7!', type: 'teleport', space: 7, bonus: 7 },
-    { id: 'CASHBACK', label: '💸 CASHBACK', color: '#20B2AA', description: 'Get back last rent you paid!', type: 'cashback' },
-    { id: 'INVESTOR', label: '📈 INVESTOR', color: '#4682B4', description: 'Your properties pay 2X this round!', type: 'buff', duration: 1 },
+    // 🎮 MINI-GAMES (7) - THE BEST ONES!
+    { id: 'PONG', label: '🏓 PONG', color: '#22c55e', description: 'Beat opponent in PONG for $5!', type: 'minigame', game: 'PONG', stakes: 5 },
+    { id: 'DODGE', label: '🔥 DODGE', color: '#ef4444', description: 'Survive 10 seconds for $5!', type: 'minigame', game: 'DODGE', stakes: 5 },
+    { id: 'REACTION', label: '⚡ REACT', color: '#f59e0b', description: 'Fastest click wins $4!', type: 'minigame', game: 'REACTION', stakes: 4 },
+    { id: 'MEMORY', label: '🧠 MEMORY', color: '#8b5cf6', description: 'Match pairs to win $4!', type: 'minigame', game: 'MEMORY', stakes: 4 },
+    { id: 'CLICKER', label: '👆 CLICKER', color: '#ec4899', description: 'Out-click opponent for $3!', type: 'minigame', game: 'CLICKER', stakes: 3 },
+    { id: 'SNAKE', label: '🐍 SNAKE', color: '#10b981', description: 'Eat 5 apples to win $5!', type: 'minigame', game: 'SNAKE', stakes: 5 },
+    { id: 'HIGHLOW', label: '📊 HI-LO', color: '#6366f1', description: 'Guess higher/lower for $4!', type: 'minigame', game: 'HIGHLOW', stakes: 4 },
     
-    // MONEY LOSERS (6)
-    { id: 'TAX', label: '🏛️ TAX', color: '#8B0000', description: 'Pay $3 to the pot!', type: 'pay', value: 3 },
+    // 💰 INSTANT MONEY (6)
+    { id: 'JACKPOT', label: '🎰 JACKPOT', color: '#FFD700', description: 'WIN 50% OF THE POT!', type: 'instant' },
+    { id: 'TRIPLE', label: '3️⃣ TRIPLE', color: '#00FF00', description: 'Next rent is 3X!', type: 'multiplier', value: 3 },
+    { id: 'DOUBLE', label: '2️⃣ DOUBLE', color: '#32CD32', description: 'Next rent is 2X!', type: 'multiplier', value: 2 },
+    { id: 'PAYDAY', label: '💵 PAYDAY', color: '#00CED1', description: 'Get $5 from pot!', type: 'instant', value: 5 },
+    { id: 'BONUS', label: '🎁 BONUS', color: '#9370DB', description: 'Free $3!', type: 'instant', value: 3 },
+    { id: 'CASHBACK', label: '💸 CASHBACK', color: '#20B2AA', description: 'Get back last rent!', type: 'cashback' },
+    
+    // 💸 MONEY LOSERS (5)
+    { id: 'TAX', label: '🏛️ TAX', color: '#8B0000', description: 'Pay $3 to pot!', type: 'pay', value: 3 },
     { id: 'BROKE', label: '😭 BROKE', color: '#B22222', description: 'Lose half your cash!', type: 'losehalf' },
     { id: 'FINE', label: '👮 FINE', color: '#DC143C', description: 'Pay $2 fine!', type: 'pay', value: 2 },
     { id: 'ROBBED', label: '🦹 ROBBED', color: '#800000', description: 'Lose $4!', type: 'pay', value: 4 },
-    { id: 'CRASH', label: '📉 CRASH', color: '#A52A2A', description: 'Your properties worth nothing this round!', type: 'debuff', duration: 1 },
-    { id: 'OOPS', label: '🙈 OOPS', color: '#CD5C5C', description: 'Pay $1 to each player!', type: 'payall', value: 1 },
+    { id: 'OOPS', label: '🙈 OOPS', color: '#CD5C5C', description: 'Pay $1 to everyone!', type: 'payall', value: 1 },
     
-    // SKILL-BASED CHOICES (8) - THE FUN ONES!
-    { id: 'GAMBLE', label: '🎲 GAMBLE', color: '#FF1493', description: 'CHOICE: Risk your cash - Double or Lose it all!', type: 'choice', choices: ['RISK IT', 'PLAY SAFE'] },
-    { id: 'DUEL', label: '⚔️ DUEL', color: '#FF4500', description: 'CHOICE: Challenge someone to a dice duel!', type: 'choice', choices: ['DUEL!', 'PASS'] },
-    { id: 'STEAL', label: '🦝 STEAL', color: '#8A2BE2', description: 'CHOICE: Try to steal $5 - 50% chance to pay $5 instead!', type: 'choice', choices: ['STEAL!', 'DONT RISK'] },
-    { id: 'SABOTAGE', label: '💣 SABOTAGE', color: '#FF6600', description: 'CHOICE: Pay $2 to remove an opponent property!', type: 'choice', choices: ['SABOTAGE', 'PASS'] },
-    { id: 'INSURANCE', label: '🛡️ INSURANCE', color: '#1E90FF', description: 'CHOICE: Pay $3 now to block next bad outcome!', type: 'choice', choices: ['BUY INSURANCE', 'SKIP'] },
-    { id: 'AUCTION', label: '🔨 AUCTION', color: '#DAA520', description: 'CHOICE: Auction a random property - you set the price!', type: 'choice', choices: ['AUCTION', 'KEEP'] },
-    { id: 'ALLIN', label: '🃏 ALL IN', color: '#9400D3', description: 'CHOICE: Go all-in! Win 3X your bet or lose it!', type: 'choice', choices: ['ALL IN!', 'FOLD'] },
-    { id: 'SWITCH', label: '🔄 SWITCH', color: '#00BFFF', description: 'CHOICE: Swap positions with any player!', type: 'choice', choices: ['SWAP', 'STAY'] },
+    // 🎲 RISK/REWARD CHOICES (6)
+    { id: 'GAMBLE', label: '🎲 GAMBLE', color: '#FF1493', description: 'Double or nothing!', type: 'choice', choices: ['RISK IT!', 'SAFE'] },
+    { id: 'STEAL', label: '🦝 STEAL', color: '#8A2BE2', description: '50/50 steal $5 or lose $5!', type: 'choice', choices: ['STEAL!', 'PASS'] },
+    { id: 'ALLIN', label: '🃏 ALL IN', color: '#9400D3', description: '33% to 3X cash!', type: 'choice', choices: ['ALL IN!', 'FOLD'] },
+    { id: 'SABOTAGE', label: '💣 SABOTAGE', color: '#FF6600', description: 'Pay $2 to remove property!', type: 'choice', choices: ['BOOM', 'NAH'] },
+    { id: 'INSURANCE', label: '🛡️ SHIELD', color: '#1E90FF', description: 'Pay $3 for protection!', type: 'choice', choices: ['BUY', 'SKIP'] },
+    { id: 'SWITCH', label: '🔄 SWAP', color: '#00BFFF', description: 'Swap positions!', type: 'choice', choices: ['SWAP', 'STAY'] },
     
-    // CHAOS EVENTS (8)
-    { id: 'SHUFFLE', label: '🔀 SHUFFLE', color: '#FF69B4', description: 'Everyone moves to random spaces!', type: 'chaos' },
-    { id: 'REVERSE', label: '↩️ REVERSE', color: '#00FA9A', description: 'Turn order reverses!', type: 'reverse' },
-    { id: 'FREERENT', label: '🏠 FREE RENT', color: '#98FB98', description: 'No rent paid this landing!', type: 'freerent' },
-    { id: 'TELEPORT', label: '✨ TELEPORT', color: '#BA55D3', description: 'Teleport anywhere you want!', type: 'teleport_choice' },
-    { id: 'EARTHQUAKE', label: '🌋 EARTHQUAKE', color: '#FF8C00', description: 'All properties lose one owner!', type: 'chaos' },
-    { id: 'LOTTERY', label: '🎟️ LOTTERY', color: '#FFD700', description: 'Random player wins $10 from pot!', type: 'lottery', value: 10 },
-    { id: 'FREEZE', label: '❄️ FREEZE', color: '#ADD8E6', description: 'Pick a player to skip their next turn!', type: 'freeze' },
-    { id: 'MYSTERY', label: '❓ MYSTERY', color: '#9932CC', description: 'Something random happens...', type: 'mystery' }
+    // 🌪️ CHAOS EVENTS (6)
+    { id: 'SHUFFLE', label: '🔀 SHUFFLE', color: '#FF69B4', description: 'Everyone moves random!', type: 'chaos' },
+    { id: 'REVERSE', label: '↩️ REVERSE', color: '#00FA9A', description: 'Turn order flips!', type: 'reverse' },
+    { id: 'TELEPORT', label: '✨ TELEPORT', color: '#BA55D3', description: 'Go anywhere!', type: 'teleport_choice' },
+    { id: 'LOTTERY', label: '🎟️ LOTTERY', color: '#FFD700', description: 'Random wins $10!', type: 'lottery', value: 10 },
+    { id: 'FREEZE', label: '❄️ FREEZE', color: '#ADD8E6', description: 'Skip someone!', type: 'freeze' },
+    { id: 'MYSTERY', label: '❓ MYSTERY', color: '#9932CC', description: 'Random effect!', type: 'mystery' }
   ];
 
   // 30 SPACES - BIGGER COOLER BOARD!
@@ -663,6 +665,14 @@ class LuckyStreetsEngine {
         result.choices = outcome.choices;
         result.message = outcome.description;
         break;
+
+      case 'minigame':
+        // Mini-game outcome - client will handle the game
+        result.needsMiniGame = true;
+        result.miniGame = outcome.game;
+        result.stakes = outcome.stakes;
+        result.message = `🎮 MINI-GAME: ${outcome.label}! Playing for $${outcome.stakes}!`;
+        break;
     }
 
     // Check if player is broke
@@ -833,6 +843,35 @@ class LuckyStreetsEngine {
         Math.max(0, room.settings.turnTimer - Math.floor((Date.now() - room.turnStartTime) / 1000)) : 
         room.settings.turnTimer
     };
+  }
+
+  // Handle mini-game results
+  processMiniGameResult(roomCode, playerId, won, stakes) {
+    const room = this.rooms.get(roomCode.toUpperCase());
+    if (!room) return { success: false, error: 'Room not found' };
+    
+    const player = room.players.find(p => p.id === playerId);
+    if (!player) return { success: false, error: 'Player not found' };
+
+    let result = { message: '', value: 0 };
+
+    if (won) {
+      player.cash += stakes;
+      result.message = `🎉 MINI-GAME WON! +$${stakes}!`;
+      result.value = stakes;
+    } else {
+      player.cash -= stakes;
+      room.pot += stakes;
+      result.message = `😢 MINI-GAME LOST! -$${stakes}!`;
+      result.value = -stakes;
+    }
+
+    // Check if player is broke
+    if (player.cash <= 0) {
+      result.eliminated = true;
+    }
+
+    return { success: true, ...result, room };
   }
 }
 

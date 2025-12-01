@@ -304,6 +304,30 @@ io.on('connection', (socket) => {
     }
   });
 
+  // MINI-GAME RESULT
+  socket.on('miniGameResult', ({ won, stakes }) => {
+    const roomCode = playerRooms.get(socket.id);
+    if (!roomCode) return;
+    
+    const result = engine.processMiniGameResult(roomCode, socket.id, won, stakes);
+    
+    if (result.success) {
+      io.to(roomCode).emit('miniGameComplete', {
+        playerId: socket.id,
+        won,
+        stakes,
+        message: result.message,
+        gameState: engine.getGameState(roomCode)
+      });
+      
+      if (result.eliminated) {
+        handleElimination(roomCode, socket.id);
+      } else {
+        setTimeout(() => endTurn(roomCode), 1500);
+      }
+    }
+  });
+
   // END TURN
   socket.on('endTurn', () => {
     const roomCode = playerRooms.get(socket.id);
@@ -383,6 +407,12 @@ function processWheelOutcome(roomCode, playerId, outcome) {
       const room = engine.getRoom(roomCode);
       const others = room.players.filter(p => p.id !== playerId);
       io.to(playerId).emit('chooseFreezeTarget', { players: others });
+    } else if (result.needsMiniGame) {
+      // Trigger mini-game on client
+      io.to(playerId).emit('startMiniGame', {
+        gameType: result.miniGame,
+        stakes: result.stakes
+      });
     } else if (result.eliminated) {
       handleElimination(roomCode, playerId);
     } else {

@@ -1,42 +1,44 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// 30 CRAZY WHEEL SEGMENTS!
+// 30 WHEEL SEGMENTS - WITH MINI-GAMES!
 const WHEEL_SEGMENTS = [
-  // MONEY MAKERS (8)
+  // 🎮 MINI-GAMES (7) - GREEN/FUN COLORS
+  { id: 'PONG', label: '🏓', color: '#22c55e' },
+  { id: 'DODGE', label: '🔥', color: '#ef4444' },
+  { id: 'REACTION', label: '⚡', color: '#f59e0b' },
+  { id: 'MEMORY', label: '🧠', color: '#8b5cf6' },
+  { id: 'CLICKER', label: '👆', color: '#ec4899' },
+  { id: 'SNAKE', label: '🐍', color: '#10b981' },
+  { id: 'HIGHLOW', label: '📊', color: '#6366f1' },
+  
+  // 💰 INSTANT MONEY (6)
   { id: 'JACKPOT', label: '🎰', color: '#FFD700' },
   { id: 'TRIPLE', label: '3X', color: '#00FF00' },
   { id: 'DOUBLE', label: '2X', color: '#32CD32' },
   { id: 'PAYDAY', label: '💵', color: '#00CED1' },
   { id: 'BONUS', label: '🎁', color: '#9370DB' },
-  { id: 'LUCKY7', label: '7️⃣', color: '#FF6347' },
   { id: 'CASHBACK', label: '💸', color: '#20B2AA' },
-  { id: 'INVESTOR', label: '📈', color: '#4682B4' },
   
-  // MONEY LOSERS (6)
+  // 💸 MONEY LOSERS (5)
   { id: 'TAX', label: '🏛️', color: '#8B0000' },
   { id: 'BROKE', label: '😭', color: '#B22222' },
   { id: 'FINE', label: '👮', color: '#DC143C' },
   { id: 'ROBBED', label: '🦹', color: '#800000' },
-  { id: 'CRASH', label: '📉', color: '#A52A2A' },
   { id: 'OOPS', label: '🙈', color: '#CD5C5C' },
   
-  // SKILL-BASED CHOICES (8)
+  // 🎲 RISK/REWARD (6)
   { id: 'GAMBLE', label: '🎲', color: '#FF1493' },
-  { id: 'DUEL', label: '⚔️', color: '#FF4500' },
   { id: 'STEAL', label: '🦝', color: '#8A2BE2' },
+  { id: 'ALLIN', label: '🃏', color: '#9400D3' },
   { id: 'SABOTAGE', label: '💣', color: '#FF6600' },
   { id: 'INSURANCE', label: '🛡️', color: '#1E90FF' },
-  { id: 'AUCTION', label: '🔨', color: '#DAA520' },
-  { id: 'ALLIN', label: '🃏', color: '#9400D3' },
   { id: 'SWITCH', label: '🔄', color: '#00BFFF' },
   
-  // CHAOS EVENTS (8)
+  // 🌪️ CHAOS (6)
   { id: 'SHUFFLE', label: '🔀', color: '#FF69B4' },
   { id: 'REVERSE', label: '↩️', color: '#00FA9A' },
-  { id: 'FREERENT', label: '🏠', color: '#98FB98' },
   { id: 'TELEPORT', label: '✨', color: '#BA55D3' },
-  { id: 'EARTHQUAKE', label: '🌋', color: '#FF8C00' },
   { id: 'LOTTERY', label: '🎟️', color: '#FFD700' },
   { id: 'FREEZE', label: '❄️', color: '#ADD8E6' },
   { id: 'MYSTERY', label: '❓', color: '#9932CC' }
@@ -44,9 +46,18 @@ const WHEEL_SEGMENTS = [
 
 // Get full outcome data by ID
 const OUTCOME_DETAILS = {
+  // MINI-GAMES
+  'PONG': { label: '🏓 PONG DUEL!', description: 'Beat opponent in pong for $5!' },
+  'DODGE': { label: '🔥 DODGE!', description: 'Survive 10 seconds for $5!' },
+  'REACTION': { label: '⚡ REACTION!', description: 'Fastest click wins $4!' },
+  'MEMORY': { label: '🧠 MEMORY!', description: 'Match pairs for $4!' },
+  'CLICKER': { label: '👆 CLICKER!', description: 'Out-click opponent for $3!' },
+  'SNAKE': { label: '🐍 SNAKE!', description: 'Eat 5 apples for $5!' },
+  'HIGHLOW': { label: '📊 HIGHER/LOWER!', description: 'Guess 5 right for $4!' },
+  // MONEY
   'JACKPOT': { label: '🎰 JACKPOT', description: 'WIN 50% OF THE POT!' },
-  'TRIPLE': { label: '3️⃣ TRIPLE', description: 'Triple the rent!' },
-  'DOUBLE': { label: '2️⃣ DOUBLE', description: 'Double the rent!' },
+  'TRIPLE': { label: '3️⃣ TRIPLE', description: 'Next rent is 3X!' },
+  'DOUBLE': { label: '2️⃣ DOUBLE', description: 'Next rent is 2X!' },
   'PAYDAY': { label: '💵 PAYDAY', description: 'Get $5 from pot!' },
   'BONUS': { label: '🎁 BONUS', description: 'Free $3!' },
   'LUCKY7': { label: '7️⃣ LUCKY 7', description: 'Go to 7, get $7!' },
